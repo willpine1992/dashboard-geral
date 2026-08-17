@@ -365,6 +365,8 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 .sankey-node text { font-family: var(--font); font-size: 11px; font-weight: 600; fill: var(--ink-secondary); }
 .sankey-node.is-dim rect { opacity: 0.15; }
 .sankey-node.is-dim text { opacity: 0.25; }
+.sankey-node.is-selected rect { stroke: var(--ink-primary); stroke-width: 2.5px; }
+.sankey-node.is-selected text { font-weight: 800; fill: var(--ink-primary); }
 .sankey-link { fill: none; transition: opacity var(--dur-fast) var(--ease), stroke-width var(--dur-fast) var(--ease); cursor: pointer; }
 .sankey-link.is-dim { opacity: 0.06; }
 .sankey-link:hover { opacity: 0.95 !important; }

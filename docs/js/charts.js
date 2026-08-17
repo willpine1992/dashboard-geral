@@ -3,16 +3,17 @@
    ========================================================================== */
 
 /* ---------------- Sankey: linha de pesquisa -> instituição estrangeira ---------------- */
+const OTHER_INSTITUTIONS_LABEL = "Outras instituições";
+
 function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions) {
   const instCounts = countBy(edgeSubset, (e) => e.foreign_institution);
   const topInstList = topEntries(instCounts, maxInstitutions).map(([k]) => k);
   const topInst = new Set(topInstList);
-  const OTHER_INST = "Outras instituições";
 
   const linkMap = new Map();
   for (const e of edgeSubset) {
     const kwBucket = colorInfo.scale.has(e.keyword) ? e.keyword : colorInfo.otherLabel;
-    const instBucket = topInst.has(e.foreign_institution) ? e.foreign_institution : OTHER_INST;
+    const instBucket = topInst.has(e.foreign_institution) ? e.foreign_institution : OTHER_INSTITUTIONS_LABEL;
     const key = kwBucket + "|||" + instBucket;
     linkMap.set(key, (linkMap.get(key) || 0) + 1);
   }
@@ -21,7 +22,7 @@ function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions) {
   linkMap.forEach((_, key) => key.split("|||").forEach((n) => nodeNames.add(n)));
 
   const leftOrder = [...colorInfo.top, colorInfo.otherLabel].filter((n) => nodeNames.has(n));
-  const rightOrder = [...topInstList, OTHER_INST].filter((n) => nodeNames.has(n));
+  const rightOrder = [...topInstList, OTHER_INSTITUTIONS_LABEL].filter((n) => nodeNames.has(n));
 
   const nodes = [
     ...leftOrder.map((name) => ({ name, side: "left" })),
@@ -102,6 +103,13 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     nodeSel.classed("is-dim", predicateNode);
   }
 
+  const isClickable = (d) => d.name !== colorInfo.otherLabel && d.name !== OTHER_INSTITUTIONS_LABEL;
+  const activeLinhas = opts.activeLinhas || new Set();
+  nodeSel.classed("is-selected", (d) =>
+    (d.side === "left" && activeLinhas.has(d.name)) ||
+    (d.side === "right" && !!opts.activeInstituicao && d.name === opts.activeInstituicao)
+  );
+
   linkPaths
     .on("mousemove", function (ev, d) {
       dim((l) => l !== d, (n) => n !== d.source && n !== d.target);
@@ -111,6 +119,12 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); });
 
   nodeSel
+    .style("cursor", (d) => (isClickable(d) ? "pointer" : "default"))
+    .on("click", (ev, d) => {
+      if (!isClickable(d)) return;
+      if (d.side === "left") opts.onLinhaClick && opts.onLinhaClick(d.name);
+      else opts.onInstituicaoClick && opts.onInstituicaoClick(d.name);
+    })
     .on("mousemove", function (ev, d) {
       dim((l) => l.source !== d && l.target !== d, (n) => n !== d);
       showTooltip(ev.clientX, ev.clientY, `<b>${d.name}</b><br>${fmt(d.value)} conexão(ões)`);

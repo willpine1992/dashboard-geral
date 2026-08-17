@@ -82,6 +82,7 @@ function readFiltersFromURL() {
     area: p.get("area") || "",
     ppgs: new Set((p.get("ppgs") || "").split(",").filter(Boolean)),
     linhas: new Set((p.get("linhas") || "").split("||").filter(Boolean)),
+    instituicao: p.get("instituicao") || "",
     professorId: p.get("professor") ? Number(p.get("professor")) : null,
     q: p.get("q") || "",
   };
@@ -93,6 +94,7 @@ function filtersToURL(filters) {
   if (filters.area) p.set("area", filters.area);
   if (filters.ppgs.size) p.set("ppgs", [...filters.ppgs].join(","));
   if (filters.linhas.size) p.set("linhas", [...filters.linhas].join("||"));
+  if (filters.instituicao) p.set("instituicao", filters.instituicao);
   if (filters.professorId) p.set("professor", filters.professorId);
   if (filters.q) p.set("q", filters.q);
   return p.toString();
@@ -112,6 +114,7 @@ function applyEdgeFilters(edges, filteredResearcherIds, filters) {
   return edges.filter((e) => {
     if (!filteredResearcherIds.has(e.researcher_id)) return false;
     if (filters.linhas.size && !filters.linhas.has(e.keyword)) return false;
+    if (filters.instituicao && e.foreign_institution !== filters.instituicao) return false;
     return true;
   });
 }

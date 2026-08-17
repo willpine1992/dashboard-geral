@@ -64,7 +64,7 @@
     renderProfessorList();
   }, 120));
   d3.select("#btn-clear-filters").on("click", () => {
-    filters = { grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), professorId: null, q: "" };
+    filters = { grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), instituicao: "", professorId: null, q: "" };
     profSearchText = "";
     d3.select("#prof-search").property("value", "");
     populateSelect("#filter-grande-area", ALL_GRANDE_AREAS, "");
@@ -93,13 +93,31 @@
     filters.linhas.has(kw) ? filters.linhas.delete(kw) : filters.linhas.add(kw);
     syncURL(); render();
   }
+  function toggleInstituicao(inst) {
+    filters.instituicao = filters.instituicao === inst ? "" : inst;
+    syncURL(); render();
+  }
 
   /* ---- estado corrente derivado, preenchido a cada render() ---- */
   let currentFilteredResearchers = [];
 
   function render() {
     currentFilteredResearchers = applyResearcherFilters(researchers, filters);
-    const filteredIds = new Set(currentFilteredResearchers.map((r) => r.id));
+    let filteredIds = new Set(currentFilteredResearchers.map((r) => r.id));
+
+    // clique numa instituição do Sankey filtra a lista de professores para
+    // só quem tem conexão com ela (não é um atributo direto do pesquisador,
+    // por isso precisa olhar as edges antes de decidir quem fica na lista)
+    if (filters.instituicao) {
+      const idsWithInst = new Set(
+        edges
+          .filter((e) => filteredIds.has(e.researcher_id) && e.foreign_institution === filters.instituicao)
+          .map((e) => e.researcher_id)
+      );
+      currentFilteredResearchers = currentFilteredResearchers.filter((r) => idsWithInst.has(r.id));
+      filteredIds = idsWithInst;
+    }
+
     const edgesForList = edges.filter((e) => filteredIds.has(e.researcher_id));
     const edgesForCharts = applyEdgeFilters(edges, filteredIds, filters);
 
@@ -111,7 +129,12 @@
     const colorBase = edgesForCharts.length ? edgesForCharts : edgesForList;
     const colorInfo = buildLinhaColorScale(colorBase);
 
-    renderSankey(document.getElementById("sankey-chart"), edgesForCharts, colorInfo);
+    renderSankey(document.getElementById("sankey-chart"), edgesForCharts, colorInfo, {
+      onLinhaClick: toggleLinha,
+      onInstituicaoClick: toggleInstituicao,
+      activeLinhas: filters.linhas,
+      activeInstituicao: filters.instituicao,
+    });
     renderWordcloud(document.getElementById("wordcloud-chart"), edgesForCharts);
     renderCountryMap(document.getElementById("map-chart"), edgesForCharts);
     renderBarChart(document.getElementById("bar-chart"), edgesForCharts, colorInfo, { n: 6 });
@@ -121,10 +144,14 @@
   }
 
   function renderPPGChecklist() {
+    const idsWithInst = filters.instituicao
+      ? new Set(edges.filter((e) => e.foreign_institution === filters.instituicao).map((e) => e.researcher_id))
+      : null;
     const base = researchers.filter((r) => {
       if (filters.grandeArea && !r.grande_areas.includes(filters.grandeArea)) return false;
       if (filters.area && !r.areas.includes(filters.area)) return false;
       if (filters.professorId && r.id !== filters.professorId) return false;
+      if (idsWithInst && !idsWithInst.has(r.id)) return false;
       return true;
     });
     const counts = new Map(ALL_PPGS.map((p) => [p, 0]));
