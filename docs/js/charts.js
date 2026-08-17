@@ -24,16 +24,43 @@ function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions) {
   const leftOrder = [...colorInfo.top, colorInfo.otherLabel].filter((n) => nodeNames.has(n));
   const rightOrder = [...topInstList, OTHER_INSTITUTIONS_LABEL].filter((n) => nodeNames.has(n));
 
+  // total real de conexões por nó (pro tooltip) — separado do valor usado
+  // no layout, que pros buckets "Outras..." é achatado abaixo
+  const nodeRealTotal = new Map();
+  for (const [key, value] of linkMap) {
+    for (const name of key.split("|||")) {
+      nodeRealTotal.set(name, (nodeRealTotal.get(name) || 0) + value);
+    }
+  }
+
   const nodes = [
-    ...leftOrder.map((name) => ({ name, side: "left" })),
-    ...rightOrder.map((name) => ({ name, side: "right" })),
+    ...leftOrder.map((name) => ({ name, side: "left", realValue: nodeRealTotal.get(name) || 0 })),
+    ...rightOrder.map((name) => ({ name, side: "right", realValue: nodeRealTotal.get(name) || 0 })),
   ];
   const nodeIndex = new Map(nodes.map((n, i) => [n.name, i]));
 
+  // links que tocam um bucket "Outras..." recebem espessura fixa e fina no
+  // layout, independente de quantos resultados foram agregados ali — isso
+  // dá prioridade visual às linhas de pesquisa/instituições nomeadas
+  // individualmente, que continuam proporcionais ao valor real
+  const OTHER_LINK_WEIGHT = 1;
+  const isOtherBucket = (name) => name === colorInfo.otherLabel || name === OTHER_INSTITUTIONS_LABEL;
+
   const links = [...linkMap.entries()].map(([key, value]) => {
     const [kwBucket, instBucket] = key.split("|||");
-    return { source: nodeIndex.get(kwBucket), target: nodeIndex.get(instBucket), value, keyword: kwBucket };
+    const isOther = isOtherBucket(kwBucket) || isOtherBucket(instBucket);
+    return {
+      source: nodeIndex.get(kwBucket),
+      target: nodeIndex.get(instBucket),
+      value: isOther ? OTHER_LINK_WEIGHT : value,
+      realValue: value,
+      keyword: kwBucket,
+      isOther,
+    };
   });
+  // desenhados primeiro = ficam por baixo quando cruzam com links nomeados,
+  // que são desenhados por cima logo em seguida
+  links.sort((a, b) => (a.isOther === b.isOther ? 0 : a.isOther ? -1 : 1));
 
   return { nodes, links };
 }
@@ -72,8 +99,8 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .attr("class", "sankey-link")
     .attr("d", d3.sankeyLinkHorizontal())
     .attr("stroke", (d) => colorFor(d.keyword))
-    .attr("stroke-opacity", 0.42)
-    .attr("stroke-width", (d) => Math.max(1.2, d.width));
+    .attr("stroke-opacity", (d) => (d.isOther ? 0.22 : 0.42))
+    .attr("stroke-width", (d) => Math.max(d.isOther ? 0.6 : 1.2, d.width));
 
   const nodeG = svg.append("g");
   const nodeSel = nodeG.selectAll("g")
@@ -96,7 +123,7 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .attr("text-anchor", (d) => (d.side === "left" ? "end" : "start"))
     .text((d) => truncateLabel(d.name, d.side === "left" ? 24 : 30));
 
-  nodeSel.append("title").text((d) => `${d.name}\n${fmt(d.value)} conexão(ões)`);
+  nodeSel.append("title").text((d) => `${d.name}\n${fmt(d.realValue)} conexão(ões)`);
 
   function dim(predicateLink, predicateNode) {
     linkPaths.classed("is-dim", predicateLink);
@@ -114,7 +141,7 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .on("mousemove", function (ev, d) {
       dim((l) => l !== d, (n) => n !== d.source && n !== d.target);
       showTooltip(ev.clientX, ev.clientY,
-        `<b>${d.keyword}</b><br>${truncateLabel(d.target.name, 40)}<br>${fmt(d.value)} conexão(ões)`);
+        `<b>${d.keyword}</b><br>${truncateLabel(d.target.name, 40)}<br>${fmt(d.realValue)} conexão(ões)`);
     })
     .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); });
 
@@ -127,7 +154,7 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     })
     .on("mousemove", function (ev, d) {
       dim((l) => l.source !== d && l.target !== d, (n) => n !== d);
-      showTooltip(ev.clientX, ev.clientY, `<b>${d.name}</b><br>${fmt(d.value)} conexão(ões)`);
+      showTooltip(ev.clientX, ev.clientY, `<b>${d.name}</b><br>${fmt(d.realValue)} conexão(ões)`);
     })
     .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); });
 }
