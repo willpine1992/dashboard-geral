@@ -1,0 +1,17 @@
+# --- Cache e artefatos Python ---
+__pycache__/
+*.pyc
+*.pyo
+
+# --- Cache de APIs externas (OpenAlex, Nominatim, matching) ---
+/cache/
+
+# --- Banco de dados local e relatórios (dados pessoais dos pesquisadores) ---
+# Não versionar: SQLite com ORCID/endereço/currículo. Só o data/dashboard.json
+# (agregado, sem dados pessoais sensíveis) vai para o repositório público.
+/output/
+
+# --- Editor / SO ---
+.DS_Store
+.vscode/
+.idea/

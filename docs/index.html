@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){var t=localStorage.getItem('gerbras-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>
+<title>GERBRAS · Parcerias Internacionais UEA</title>
+<link rel="stylesheet" href="css/style.css?v=7" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar__brand">
+    <img src="image/propespuea.svg" alt="PROPESP UEA" class="topbar__logo" />
+    <div class="topbar__title">
+      <strong>GERBRAS · Parcerias Internacionais</strong>
+      <span>Pesquisadores UEA × Alemanha</span>
+    </div>
+  </div>
+
+  <div class="topbar__stats" id="topbar-stats"></div>
+
+  <nav class="topbar__nav">
+    <button type="button" id="theme-toggle" class="theme-toggle" aria-label="Alternar tema">
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+    </button>
+    <a href="index.html" class="topbar__link is-active">Painel</a>
+    <a href="flowmap.html" class="topbar__link">Mapa de Fluxo</a>
+    <button class="btn btn--ghost" id="btn-clear-filters" style="margin-left:4px;">Limpar filtros</button>
+  </nav>
+</header>
+
+<main class="layout">
+
+  <!-- ===================== Coluna 1 — filtros ===================== -->
+  <section class="col col--left">
+
+    <div class="panel">
+      <div class="panel__header"><span class="panel__title">Grande Área</span></div>
+      <div class="field">
+        <select id="filter-grande-area" class="dropdown">
+          <option value="">Todas as grandes áreas</option>
+        </select>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <select id="filter-area" class="dropdown">
+          <option value="">Todas as áreas temáticas</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel__header">
+        <span class="panel__title">Programas (PPG)</span>
+        <span class="panel__hint" id="ppg-count-hint"></span>
+      </div>
+      <div class="checklist" id="filter-ppg-list"></div>
+    </div>
+
+    <div class="panel panel--grow">
+      <div class="panel__header">
+        <span class="panel__title">Linhas de pesquisa</span>
+        <span class="panel__hint">clique p/ filtrar</span>
+      </div>
+      <div class="panel__body">
+        <div class="picklist" id="linhas-list"></div>
+      </div>
+    </div>
+
+    <div class="panel panel--grow">
+      <div class="panel__header">
+        <span class="panel__title">Professores</span>
+        <span class="panel__hint" id="prof-count-hint"></span>
+      </div>
+      <div class="panel__body">
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          <input type="text" id="prof-search" placeholder="Buscar professor…" />
+        </div>
+        <div class="picklist" id="prof-list"></div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ===================== Coluna 2 — Sankey ===================== -->
+  <section class="col col--center">
+    <div class="panel panel--grow">
+      <div class="panel__header">
+        <span class="panel__title">Linhas de pesquisa × Parcerias potenciais na Alemanha</span>
+        <span class="panel__hint" id="sankey-hint"></span>
+      </div>
+      <div class="panel__body" id="sankey-chart"></div>
+    </div>
+  </section>
+
+  <!-- ===================== Coluna 3 — visão geral ===================== -->
+  <section class="col col--right">
+
+    <div class="panel" style="height:210px; display:flex; flex-direction:column;">
+      <div class="panel__header"><span class="panel__title">Instituições estrangeiras</span></div>
+      <div class="panel__body" id="wordcloud-chart" style="flex:1; min-height:0;"></div>
+    </div>
+
+    <div class="panel" style="height:200px; display:flex; flex-direction:column;">
+      <div class="panel__header"><span class="panel__title">País estrangeiro</span></div>
+      <div class="panel__body" id="map-chart" style="flex:1; min-height:0;"></div>
+    </div>
+
+    <div class="panel" style="height:250px; display:flex; flex-direction:column;">
+      <div class="panel__header"><span class="panel__title">Linhas de pesquisa</span></div>
+      <div class="panel__body" id="bar-chart" style="flex:1; min-height:0;"></div>
+    </div>
+
+    <div class="panel panel--grow">
+      <div class="panel__header">
+        <span class="panel__title">Pesquisadores estrangeiros</span>
+        <span class="panel__hint">por conexões</span>
+      </div>
+      <div class="panel__body" id="foreign-ranking"></div>
+    </div>
+
+  </section>
+
+</main>
+
+<script src="lib/d3.v7.min.js"></script>
+<script src="lib/d3-sankey.min.js"></script>
+<script src="lib/d3-cloud.min.js"></script>
+<script src="lib/topojson-client.min.js"></script>
+<script src="js/common.js?v=7"></script>
+<script src="js/charts.js?v=7"></script>
+<script src="js/page1.js?v=7"></script>
+</body>
+</html>
