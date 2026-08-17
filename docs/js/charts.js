@@ -200,7 +200,7 @@ async function renderInstitutionMap(el, lat, lon, label) {
     .attr("class", "map-country")
     .attr("fill", CHART_MAP_FILL)
     .attr("stroke", CHART_MAP_BORDER)
-    .attr("stroke-width", 0.6)
+    .attr("stroke-width", 1)
     .attr("d", path);
 
   const xy = projection([lon, lat]);
@@ -254,7 +254,7 @@ async function renderCountryMap(el, edgeSubset) {
       return v ? colorScale(v) : CHART_MAP_FILL;
     })
     .attr("stroke", CHART_MAP_BORDER)
-    .attr("stroke-width", 0.5)
+    .attr("stroke-width", 1)
     .on("mousemove", (ev, d) => {
       const v = countryNameToCount.get(normalizeCountry(d.properties.name));
       if (!v) return;

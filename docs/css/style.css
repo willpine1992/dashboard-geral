@@ -60,7 +60,7 @@
 
   /* mapas/gráficos — cromo neutro (lido pelo JS via getComputedStyle) */
   --chart-map-fill: #eef5f1;
-  --chart-map-border: #ffffff;
+  --chart-map-border: #0b6b45; /* alto contraste c/ o fill p/ projeção (datashow) */
   --chart-node-neutral: #0b3d2b;
   --chart-seq-1: #eaf7f0; --chart-seq-2: #c7ecda; --chart-seq-3: #96dab9;
   --chart-seq-4: #5fc192; --chart-seq-5: #2e9e6c; --chart-seq-6: #0f7a4d; --chart-seq-7: #0b5c3a;
@@ -97,7 +97,7 @@
     --shadow-lift: 0 12px 36px rgba(0, 0, 0, 0.65);
 
     --chart-map-fill: #1c2620;
-    --chart-map-border: #0a100c;
+    --chart-map-border: #6ee7b8; /* alto contraste c/ o fill p/ projeção (datashow) */
     --chart-node-neutral: #e7ebe8;
     --chart-seq-1: #142a20; --chart-seq-2: #164028; --chart-seq-3: #185c34;
     --chart-seq-4: #1c7d40; --chart-seq-5: #26a352; --chart-seq-6: #4bc873; --chart-seq-7: #8de6a5;
@@ -132,7 +132,7 @@
   --shadow-lift: 0 12px 36px rgba(0, 0, 0, 0.65);
 
   --chart-map-fill: #1c2620;
-  --chart-map-border: #0a100c;
+  --chart-map-border: #6ee7b8; /* alto contraste c/ o fill p/ projeção (datashow) */
   --chart-node-neutral: #e7ebe8;
   --chart-seq-1: #142a20; --chart-seq-2: #164028; --chart-seq-3: #185c34;
   --chart-seq-4: #1c7d40; --chart-seq-5: #26a352; --chart-seq-6: #4bc873; --chart-seq-7: #8de6a5;

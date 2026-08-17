@@ -65,7 +65,7 @@
       .attr("class", "map-country")
       .attr("fill", CHART_MAP_FILL)
       .attr("stroke", CHART_MAP_BORDER)
-      .attr("stroke-width", 0.6);
+      .attr("stroke-width", 1);
 
     const arcG = svg.append("g");
     arcs = arcG.selectAll("path.flow-arc")
