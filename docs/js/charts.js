@@ -1,5 +1,5 @@
 /* ==========================================================================
-   GERBRAS Dashboard — funções de gráfico (D3): Sankey, wordcloud, mapa, barras
+   GERBRAS Dashboard — funções de gráfico (D3): Sankey, mapa, barras
    ========================================================================== */
 
 /* ---------------- Sankey: linha de pesquisa -> instituição estrangeira ---------------- */
@@ -133,53 +133,6 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
 }
 
 function truncateLabel(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
-
-/* ---------------- Word cloud: instituições estrangeiras ---------------- */
-function renderWordcloud(el, edgeSubset) {
-  const container = d3.select(el);
-  container.selectAll("*").remove();
-  const width = el.clientWidth, height = el.clientHeight;
-  if (!edgeSubset.length || width < 10 || height < 10) {
-    container.append("div").attr("class", "empty-hint").text("Sem dados.");
-    return;
-  }
-
-  const counts = countBy(edgeSubset, (e) => e.foreign_institution);
-  const words = topEntries(counts, 45).map(([text, value]) => ({ text, value }));
-  const maxV = d3.max(words, (d) => d.value) || 1;
-  const minV = d3.min(words, (d) => d.value) || 1;
-  const fontScale = d3.scaleSqrt().domain([minV, maxV]).range([11, Math.min(42, width / 9)]);
-  const colorScale = d3.scaleQuantize().domain([minV, maxV]).range(GREEN_SEQUENTIAL.slice(2));
-
-  d3.layout.cloud()
-    .size([width, height])
-    .words(words)
-    .padding(3)
-    .rotate(0)
-    .font("-apple-system, BlinkMacSystemFont, sans-serif")
-    .fontWeight(700)
-    .fontSize((d) => fontScale(d.value))
-    .spiral("archimedean")
-    .on("end", draw)
-    .start();
-
-  function draw(placed) {
-    const svg = container.append("svg").attr("width", width).attr("height", height);
-    const g = svg.append("g").attr("transform", `translate(${width / 2},${height / 2})`);
-    g.selectAll("text")
-      .data(placed)
-      .join("text")
-      .attr("class", "wc-word")
-      .style("font-size", (d) => d.size + "px")
-      .style("font-weight", 700)
-      .style("fill", (d) => colorScale(d.value))
-      .attr("text-anchor", "middle")
-      .attr("transform", (d) => `translate(${d.x},${d.y})`)
-      .text((d) => d.text)
-      .on("mousemove", (ev, d) => showTooltip(ev.clientX, ev.clientY, `<b>${d.text}</b><br>${fmt(d.value)} conexão(ões)`))
-      .on("mouseleave", hideTooltip);
-  }
-}
 
 /* ---------------- Mapa: países estrangeiros com match ---------------- */
 let _worldCache = null;

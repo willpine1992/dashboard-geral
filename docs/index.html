@@ -98,9 +98,13 @@
   <!-- ===================== Coluna 3 — visão geral ===================== -->
   <section class="col col--right">
 
-    <div class="panel" style="height:210px; display:flex; flex-direction:column;">
-      <div class="panel__header"><span class="panel__title">Instituições estrangeiras</span></div>
-      <div class="panel__body" id="wordcloud-chart" style="flex:1; min-height:0;"></div>
+    <div class="panel">
+      <div class="panel__header"><span class="panel__title">País</span></div>
+      <div class="field">
+        <select id="filter-pais" class="dropdown">
+          <option value="">Todos os países</option>
+        </select>
+      </div>
     </div>
 
     <div class="panel" style="height:200px; display:flex; flex-direction:column;">
@@ -127,7 +131,6 @@
 
 <script src="lib/d3.v7.min.js"></script>
 <script src="lib/d3-sankey.min.js"></script>
-<script src="lib/d3-cloud.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
 <script src="js/common.js?v=7"></script>
 <script src="js/charts.js?v=7"></script>

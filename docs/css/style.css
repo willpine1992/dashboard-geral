@@ -374,9 +374,7 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 /* ==========================================================================
    Word cloud / mapa / barras
    ========================================================================== */
-#wordcloud-chart, #map-chart, #bar-chart { width: 100%; height: 100%; }
-.wc-word { font-family: var(--font); cursor: pointer; transition: opacity var(--dur-fast) var(--ease); }
-.wc-word:hover { opacity: 0.65; }
+#map-chart, #bar-chart { width: 100%; height: 100%; }
 
 .map-country { transition: fill var(--dur-mid) var(--ease); cursor: pointer; }
 .map-sphere { fill: var(--surface-alt); }

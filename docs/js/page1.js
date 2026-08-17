@@ -20,6 +20,7 @@
 
   const ALL_GRANDE_AREAS = [...new Set(researchers.flatMap((r) => r.grande_areas))].sort();
   const ALL_PPGS = [...new Set(researchers.flatMap((r) => r.programas))].sort();
+  const ALL_PAISES = [...new Set(edges.map((e) => e.foreign_country))].sort();
 
   function areaOptionsFor(grandeArea) {
     const pool = grandeArea ? researchers.filter((r) => r.grande_areas.includes(grandeArea)) : researchers;
@@ -40,11 +41,12 @@
 
   populateSelect("#filter-grande-area", ALL_GRANDE_AREAS, filters.grandeArea);
   populateSelect("#filter-area", areaOptionsFor(filters.grandeArea), filters.area);
+  populateSelect("#filter-pais", ALL_PAISES, filters.pais);
 
   /* ---- topbar stats ---- */
   d3.select("#topbar-stats").html(`
     <div class="topbar__stat"><b>${fmt(researchers.length)}</b><small>Pesquisadores</small></div>
-    <div class="topbar__stat"><b>${fmt(institutions.length)}</b><small>Instituições DE</small></div>
+    <div class="topbar__stat"><b>${fmt(institutions.length)}</b><small>Instituições estrangeiras</small></div>
     <div class="topbar__stat"><b>${fmt(edges.length)}</b><small>Conexões</small></div>
   `);
 
@@ -59,16 +61,29 @@
     filters.area = this.value;
     syncURL(); render();
   });
+  d3.select("#filter-pais").on("change", function () {
+    filters.pais = this.value;
+    // se a instituição selecionada não pertence mais ao país escolhido, limpa —
+    // evita ficar com um filtro de instituição "órfão" que não bate com nada
+    if (filters.instituicao && filters.pais) {
+      const stillValid = edges.some(
+        (e) => e.foreign_institution === filters.instituicao && e.foreign_country === filters.pais
+      );
+      if (!stillValid) filters.instituicao = "";
+    }
+    syncURL(); render();
+  });
   d3.select("#prof-search").property("value", profSearchText).on("input", debounce(function (ev) {
     profSearchText = ev.target.value;
     renderProfessorList();
   }, 120));
   d3.select("#btn-clear-filters").on("click", () => {
-    filters = { grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), instituicao: "", professorId: null, q: "" };
+    filters = { grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), pais: "", instituicao: "", professorId: null, q: "" };
     profSearchText = "";
     d3.select("#prof-search").property("value", "");
     populateSelect("#filter-grande-area", ALL_GRANDE_AREAS, "");
     populateSelect("#filter-area", areaOptionsFor(""), "");
+    populateSelect("#filter-pais", ALL_PAISES, "");
     syncURL(); render();
   });
 
@@ -105,17 +120,18 @@
     currentFilteredResearchers = applyResearcherFilters(researchers, filters);
     let filteredIds = new Set(currentFilteredResearchers.map((r) => r.id));
 
-    // clique numa instituição do Sankey filtra a lista de professores para
-    // só quem tem conexão com ela (não é um atributo direto do pesquisador,
-    // por isso precisa olhar as edges antes de decidir quem fica na lista)
-    if (filters.instituicao) {
-      const idsWithInst = new Set(
+    // país/instituição não são atributos diretos do pesquisador — filtrar a
+    // lista de professores por eles exige olhar as edges primeiro
+    if (filters.pais || filters.instituicao) {
+      const idsMatching = new Set(
         edges
-          .filter((e) => filteredIds.has(e.researcher_id) && e.foreign_institution === filters.instituicao)
+          .filter((e) => filteredIds.has(e.researcher_id))
+          .filter((e) => !filters.pais || e.foreign_country === filters.pais)
+          .filter((e) => !filters.instituicao || e.foreign_institution === filters.instituicao)
           .map((e) => e.researcher_id)
       );
-      currentFilteredResearchers = currentFilteredResearchers.filter((r) => idsWithInst.has(r.id));
-      filteredIds = idsWithInst;
+      currentFilteredResearchers = currentFilteredResearchers.filter((r) => idsMatching.has(r.id));
+      filteredIds = idsMatching;
     }
 
     const edgesForList = edges.filter((e) => filteredIds.has(e.researcher_id));
@@ -135,7 +151,6 @@
       activeLinhas: filters.linhas,
       activeInstituicao: filters.instituicao,
     });
-    renderWordcloud(document.getElementById("wordcloud-chart"), edgesForCharts);
     renderCountryMap(document.getElementById("map-chart"), edgesForCharts);
     renderBarChart(document.getElementById("bar-chart"), edgesForCharts, colorInfo, { n: 6 });
 
@@ -144,14 +159,19 @@
   }
 
   function renderPPGChecklist() {
-    const idsWithInst = filters.instituicao
-      ? new Set(edges.filter((e) => e.foreign_institution === filters.instituicao).map((e) => e.researcher_id))
+    const idsMatching = (filters.pais || filters.instituicao)
+      ? new Set(
+          edges
+            .filter((e) => !filters.pais || e.foreign_country === filters.pais)
+            .filter((e) => !filters.instituicao || e.foreign_institution === filters.instituicao)
+            .map((e) => e.researcher_id)
+        )
       : null;
     const base = researchers.filter((r) => {
       if (filters.grandeArea && !r.grande_areas.includes(filters.grandeArea)) return false;
       if (filters.area && !r.areas.includes(filters.area)) return false;
       if (filters.professorId && r.id !== filters.professorId) return false;
-      if (idsWithInst && !idsWithInst.has(r.id)) return false;
+      if (idsMatching && !idsMatching.has(r.id)) return false;
       return true;
     });
     const counts = new Map(ALL_PPGS.map((p) => [p, 0]));
