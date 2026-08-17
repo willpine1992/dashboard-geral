@@ -2,7 +2,12 @@
    GERBRAS Dashboard — Página 2: Flow Map Manaus → instituições na Alemanha
    ========================================================================== */
 (async function () {
-  const { researchers, edges, institutions, manaus, researcherById } = await loadData();
+  const data = await loadData();
+  const { researchers, edges, manaus, researcherById } = data;
+  // instituições sem coordenada resolvida (país novo ainda sem fallback
+  // geocodificado) quebrariam os arcos/projeção — melhor ficar de fora do
+  // globo do que gerar NaN
+  const institutions = data.institutions.filter((d) => d.lat != null && d.lon != null);
   const world = await getWorld();
 
   d3.select("#topbar-stats").html(`

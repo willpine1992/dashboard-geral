@@ -85,6 +85,15 @@ MANUAL_INSTITUTION_COORDS: dict[str, tuple[float, float]] = {
 
 GERMANY_CENTER = (51.1657, 10.4515)
 
+# Fallback de último recurso por país, só usado quando o Nominatim não
+# resolve o nome da instituição nem bate com nenhuma dica manual abaixo.
+# Adicionar uma entrada aqui para cada país novo que entrar no cruzamento
+# (Angola, Argélia, Moçambique, ...), senão a instituição cai sem coordenada.
+COUNTRY_CENTER_FALLBACK: dict[str, tuple[float, float]] = {
+    "Alemanha": GERMANY_CENTER,
+    "Gana": (7.9465, -1.0232),
+}
+
 # Cidades citadas em nomes de instituição — fallback quando o Nominatim
 # e o mapa manual acima não resolvem.
 GERMAN_CITY_HINTS: dict[str, tuple[float, float]] = {
@@ -104,17 +113,20 @@ GERMAN_CITY_HINTS: dict[str, tuple[float, float]] = {
 }
 
 
-def resolve_institution_coords(inst: str, geocoder: Geocoder) -> tuple[float | None, float | None]:
-    lat, lon = geocoder.geocode(inst, None, "Alemanha")
+def resolve_institution_coords(inst: str, country: str, geocoder: Geocoder) -> tuple[float | None, float | None]:
+    lat, lon = geocoder.geocode(inst, None, country)
     if lat is not None:
         return lat, lon
-    if inst in MANUAL_INSTITUTION_COORDS:
-        return MANUAL_INSTITUTION_COORDS[inst]
-    low = inst.lower()
-    for city, coords in GERMAN_CITY_HINTS.items():
-        if city in low:
-            return coords
-    return GERMANY_CENTER
+    # dicas manuais abaixo foram curadas só para instituições alemãs que o
+    # Nominatim não resolve (institutos "guarda-chuva" sem tag OSM própria)
+    if country == "Alemanha":
+        if inst in MANUAL_INSTITUTION_COORDS:
+            return MANUAL_INSTITUTION_COORDS[inst]
+        low = inst.lower()
+        for city, coords in GERMAN_CITY_HINTS.items():
+            if city in low:
+                return coords
+    return COUNTRY_CENTER_FALLBACK.get(country, (None, None))
 
 
 def export_researchers(conn) -> dict[int, dict]:
@@ -201,7 +213,7 @@ def export_institutions(conn, geocoder: Geocoder) -> list[dict]:
 
     out = []
     for inst, country, n_matches, n_researchers in rows:
-        lat, lon = resolve_institution_coords(inst, geocoder)
+        lat, lon = resolve_institution_coords(inst, country, geocoder)
         out.append({
             "instituicao": inst, "pais": country,
             "lat": lat, "lon": lon,

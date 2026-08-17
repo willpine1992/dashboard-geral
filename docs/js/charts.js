@@ -231,7 +231,11 @@ async function renderCountryMap(el, edgeSubset) {
 }
 
 function normalizeCountry(name) {
-  const map = { Germany: "Alemanha" };
+  // nomes em inglês do TopoJSON -> nomes em português usados em foreign_country
+  const map = {
+    Germany: "Alemanha", Ghana: "Gana", Angola: "Angola", Algeria: "Argélia",
+    Mozambique: "Moçambique", "South Africa": "África do Sul",
+  };
   return map[name] || name;
 }
 
