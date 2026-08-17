@@ -92,6 +92,9 @@ GERMANY_CENTER = (51.1657, 10.4515)
 COUNTRY_CENTER_FALLBACK: dict[str, tuple[float, float]] = {
     "Alemanha": GERMANY_CENTER,
     "Gana": (7.9465, -1.0232),
+    "África do Sul": (-28.8166, 24.9916),
+    "Argélia": (28.0339, 1.6596),
+    "Moçambique": (-18.6657, 35.5296),
 }
 
 # Cidades citadas em nomes de instituição — fallback quando o Nominatim
