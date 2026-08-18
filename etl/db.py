@@ -187,7 +187,8 @@ def get_top_keywords(conn: sqlite3.Connection, researcher_id: int, limit: int, s
 
 
 def replace_international_matches(
-    conn: sqlite3.Connection, researcher_id: int, matches: list[dict], country: str | None = None
+    conn: sqlite3.Connection, researcher_id: int, matches: list[dict],
+    country: str | None = None, institution: str | None = None,
 ) -> None:
     """Substitui os matches internacionais de um pesquisador.
 
@@ -196,8 +197,19 @@ def replace_international_matches(
     conviverem na mesma tabela sem um apagar os matches do outro). Sem
     `country`, mantém o comportamento antigo de apagar tudo — usar só quando
     não houver mais de um país na tabela.
+
+    Se `institution` também for informado, apaga só os matches daquela
+    instituição específica dentro do país — necessário quando um país tem
+    mais de uma instituição-alvo (ex.: África do Sul = University of
+    Johannesburg + Stellenbosch University), senão rodar o matcher de uma
+    apaga os matches da outra por engano.
     """
-    if country:
+    if institution:
+        conn.execute(
+            "DELETE FROM international_matches WHERE researcher_id=? AND foreign_country=? AND foreign_institution=?",
+            (researcher_id, country, institution),
+        )
+    elif country:
         conn.execute(
             "DELETE FROM international_matches WHERE researcher_id=? AND foreign_country=?",
             (researcher_id, country),
