@@ -248,7 +248,7 @@ html, body {
 .panel:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
 
 .panel--flush { padding: 0; overflow: hidden; }
-.panel--grow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.panel--grow { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
 
 .panel__header {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -259,7 +259,10 @@ html, body {
   text-transform: uppercase; letter-spacing: 0.06em;
 }
 .panel__hint { font-size: 10.5px; color: var(--ink-muted); }
-.panel__body { flex: 1 1 auto; min-height: 0; }
+.panel__body {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden;
+  display: flex; flex-direction: column;
+}
 
 /* ==========================================================================
    Filtros
@@ -293,7 +296,7 @@ select.dropdown:focus { outline: none; border-color: var(--accent); box-shadow: 
 .checkrow small { margin-left: auto; font-size: 10.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; }
 
 /* listas selecionáveis (linhas de pesquisa / professores) */
-.picklist { display: flex; flex-direction: column; gap: 3px; max-height: 240px; overflow-y: auto; }
+.picklist { display: flex; flex-direction: column; gap: 3px; flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .pickrow {
   display: flex; align-items: center; gap: 8px; padding: 7px 9px;
   border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent;
@@ -313,7 +316,7 @@ select.dropdown:focus { outline: none; border-color: var(--accent); box-shadow: 
 .rank__val { font-size: 11px; font-weight: 700; color: var(--accent-strong); font-variant-numeric: tabular-nums; }
 
 .search-box {
-  display: flex; align-items: center; gap: 8px;
+  display: flex; align-items: center; gap: 8px; flex: none;
   background: var(--surface-alt); border: 1px solid var(--border-hairline);
   border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 8px;
   transition: all var(--dur-fast) var(--ease);
