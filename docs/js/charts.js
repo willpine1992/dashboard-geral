@@ -5,14 +5,23 @@
 /* ---------------- Sankey: linha de pesquisa -> instituição estrangeira ---------------- */
 const OTHER_INSTITUTIONS_LABEL = "Outras instituições";
 
-function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions) {
+function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions, maxLinhas) {
   const instCounts = countBy(edgeSubset, (e) => e.foreign_institution);
   const topInstList = topEntries(instCounts, maxInstitutions).map(([k]) => k);
   const topInst = new Set(topInstList);
 
+  // colorInfo.scale só cobre as poucas linhas com cor própria (paleta
+  // categórica validada, não dá pra inventar mais cores). Além dessas, uma
+  // lista maior de linhas (maxLinhas) ainda aparece nomeada individualmente
+  // no gráfico, só que na cor neutra "Outras" — só o que sobra dessa lista
+  // maior é que vira de fato o balde agregado "Outras linhas de pesquisa".
+  const linhaCounts = countBy(edgeSubset, (e) => e.keyword);
+  const topLinhasList = topEntries(linhaCounts, maxLinhas).map(([k]) => k);
+  const topLinhas = new Set(topLinhasList);
+
   const linkMap = new Map();
   for (const e of edgeSubset) {
-    const kwBucket = colorInfo.scale.has(e.keyword) ? e.keyword : colorInfo.otherLabel;
+    const kwBucket = topLinhas.has(e.keyword) ? e.keyword : colorInfo.otherLabel;
     const instBucket = topInst.has(e.foreign_institution) ? e.foreign_institution : OTHER_INSTITUTIONS_LABEL;
     const key = kwBucket + "|||" + instBucket;
     linkMap.set(key, (linkMap.get(key) || 0) + 1);
@@ -21,7 +30,7 @@ function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions) {
   const nodeNames = new Set();
   linkMap.forEach((_, key) => key.split("|||").forEach((n) => nodeNames.add(n)));
 
-  const leftOrder = [...colorInfo.top, colorInfo.otherLabel].filter((n) => nodeNames.has(n));
+  const leftOrder = [...topLinhasList, colorInfo.otherLabel].filter((n) => nodeNames.has(n));
   const rightOrder = [...topInstList, OTHER_INSTITUTIONS_LABEL].filter((n) => nodeNames.has(n));
 
   // total real de conexões por nó (pro tooltip) — separado do valor usado
@@ -74,8 +83,9 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     return;
   }
 
-  const maxInst = opts.maxInstitutions || 13;
-  const graph = buildSankeyGraph(edgeSubset, colorInfo, maxInst);
+  const maxInst = opts.maxInstitutions || 24;
+  const maxLinhas = opts.maxLinhas || 22;
+  const graph = buildSankeyGraph(edgeSubset, colorInfo, maxInst, maxLinhas);
 
   const sankeyLayout = d3.sankey()
     .nodeId((d) => d.index)

@@ -152,7 +152,7 @@
       activeInstituicao: filters.instituicao,
     });
     renderCountryMap(document.getElementById("map-chart"), edgesForCharts);
-    renderBarChart(document.getElementById("bar-chart"), edgesForCharts, colorInfo, { n: 6 });
+    renderBarChart(document.getElementById("bar-chart"), edgesForCharts, colorInfo, { n: 10 });
 
     d3.select("#sankey-hint").text(`${fmt(edgesForCharts.length)} conexões`);
     d3.select("#prof-count-hint").text(`${fmt(currentFilteredResearchers.length)} / ${fmt(researchers.length)}`);

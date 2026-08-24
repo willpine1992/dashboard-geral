@@ -145,12 +145,13 @@
 html, body {
   margin: 0;
   padding: 0;
-  height: 100%;
+  min-height: 100%;
   background: var(--surface-page);
   color: var(--ink-secondary);
   font-family: var(--font);
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 ::selection { background: var(--accent-wash); color: var(--ink-primary); }
@@ -224,15 +225,19 @@ html, body {
    Layout de colunas — página 1
    ========================================================================== */
 .layout {
-  height: calc(100vh - var(--topbar-h));
+  min-height: calc(100vh - var(--topbar-h));
   display: grid;
   grid-template-columns: 20fr 60fr 20fr;
   gap: 16px;
   padding: 16px;
+  align-items: start;
 }
 
-.col { min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 2px; }
-.col--center { overflow: hidden; }
+/* a página inteira rola (não cada coluna isolada) — os painéis têm altura
+   fixa (ver #sankey-chart, .chart-fixed etc.) para não ficar espremendo o
+   gráfico conforme o tamanho da tela; o que sobra vira scroll da página. */
+.col { min-width: 0; display: flex; flex-direction: column; gap: 14px; overflow: visible; padding-right: 2px; }
+.col--center { overflow: visible; }
 
 /* ==========================================================================
    Cartões / painéis
@@ -248,7 +253,7 @@ html, body {
 .panel:hover { box-shadow: var(--shadow-md); border-color: var(--border-strong); }
 
 .panel--flush { padding: 0; overflow: hidden; }
-.panel--grow { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.panel--grow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
 .panel__header {
   display: flex; align-items: baseline; justify-content: space-between;
@@ -369,7 +374,9 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 /* ==========================================================================
    Sankey
    ========================================================================== */
-#sankey-chart { width: 100%; height: 100%; }
+/* altura fixa e generosa — não encolhe conforme o tamanho da tela; o que
+   não couber vira scroll da página (ver .layout/.col acima) */
+#sankey-chart { width: 100%; height: 860px; }
 .sankey-node rect { stroke: rgba(255,255,255,0.6); stroke-width: 1px; rx: 4px; transition: opacity var(--dur-fast) var(--ease); }
 .sankey-node text { font-family: var(--font); font-size: 11px; font-weight: 600; fill: var(--ink-secondary); }
 .sankey-node.is-dim rect { opacity: 0.15; }
@@ -456,11 +463,9 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 .col:nth-child(3) .panel:nth-child(3) { animation-delay: 180ms; }
 .col:nth-child(3) .panel:nth-child(4) { animation-delay: 220ms; }
 
-/* responsivo simples para telas menores (mantém proporção, empilha em telas muito estreitas) */
+/* responsivo simples para telas menores: empilha as 3 colunas em 1 */
 @media (max-width: 980px) {
-  .layout { grid-template-columns: 1fr; height: auto; overflow-y: auto; }
-  .col { overflow: visible; }
-  html, body { overflow: auto; }
+  .layout { grid-template-columns: 1fr; }
 }
 
 /* ==========================================================================
