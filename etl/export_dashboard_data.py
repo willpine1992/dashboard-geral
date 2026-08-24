@@ -11,7 +11,9 @@ Uso:
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
+import tempfile
 from collections import defaultdict
 from pathlib import Path
 
@@ -181,6 +183,108 @@ def export_researchers(conn) -> dict[int, dict]:
     return out, researchers
 
 
+def _raiz_projetos_dashboards(inicio: Path) -> Path:
+    for p in [inicio, *inicio.parents]:
+        if (p / "MATCHING").is_dir() and (p / "PADRONIZAÇAO").is_dir():
+            return p
+    raise RuntimeError("Raiz PROJETOS DASHBOARDS (com MATCHING/ e PADRONIZAÇAO/) não encontrada")
+
+
+def _traduzir_keywords_en_pt(keywords: list[str]) -> dict[str, str]:
+    """Traduz as keywords (em inglês, vindas do OpenAlex) para português
+    legível, para exibição no lado UEA dos gráficos — via subprocess no
+    venv de PADRONIZAÇAO/ (só ele tem deep-translator/spaCy instalados).
+    Fallback para quando não há uma linha de pesquisa real do Lattes que
+    bata semanticamente com a keyword (ver _mapear_keywords_para_lattes)."""
+    if not keywords:
+        return {}
+    raiz = _raiz_projetos_dashboards(Path(__file__).resolve())
+    padronizacao_python = raiz / "PADRONIZAÇAO" / ".venv" / "bin" / "python"
+    padronizar_script = raiz / "PADRONIZAÇAO" / "padronizar.py"
+
+    with tempfile.TemporaryDirectory() as tmp:
+        entrada_path = Path(tmp) / "keywords.json"
+        entrada_path.write_text(json.dumps(keywords, ensure_ascii=False), encoding="utf-8")
+        proc = subprocess.run(
+            [str(padronizacao_python), str(padronizar_script), "--traduzir", "en", "pt", str(entrada_path)],
+            capture_output=True, text=True, check=True,
+        )
+    return {k: v.strip() for k, v in json.loads(proc.stdout).items()}
+
+
+def _termos_lattes_por_researcher(conn) -> dict[int, list[str]]:
+    """researcher_id (deste banco) -> linhas_pesquisa.titulo + palavras_chave.termo
+    do MESMO pesquisador no Lattes (DATA BASE UEA/LATTES/data/gerbras.db),
+    casando pelo lattes_id (ORCID/ID Lattes bate 1:1 entre os dois bancos)."""
+    import sqlite3
+
+    raiz = _raiz_projetos_dashboards(Path(__file__).resolve())
+    lattes_db_path = raiz / "DATA BASE UEA" / "LATTES" / "data" / "gerbras.db"
+    if not lattes_db_path.exists():
+        return {}
+
+    lattes_id_por_researcher = dict(conn.execute(
+        "SELECT id, lattes_id FROM researchers WHERE lattes_id IS NOT NULL"
+    ).fetchall())
+    if not lattes_id_por_researcher:
+        return {}
+
+    lattes_con = sqlite3.connect(lattes_db_path)
+    termos_por_id_lattes: dict[str, set[str]] = {}
+    for id_lattes, titulo in lattes_con.execute(
+        """SELECT p.id_lattes, l.titulo FROM pesquisadores p
+           JOIN pesquisador_linha pl ON pl.pesquisador_id = p.id
+           JOIN linhas_pesquisa l ON l.id = pl.linha_id"""
+    ).fetchall():
+        termos_por_id_lattes.setdefault(id_lattes, set()).add(titulo)
+    for id_lattes, termo in lattes_con.execute(
+        """SELECT p.id_lattes, pc.termo FROM pesquisadores p
+           JOIN pesquisador_linha pl ON pl.pesquisador_id = p.id
+           JOIN linha_palavra lpw ON lpw.linha_id = pl.linha_id
+           JOIN palavras_chave pc ON pc.id = lpw.palavra_id"""
+    ).fetchall():
+        termos_por_id_lattes.setdefault(id_lattes, set()).add(termo)
+    lattes_con.close()
+
+    resultado = {}
+    for researcher_id, id_lattes in lattes_id_por_researcher.items():
+        termos = termos_por_id_lattes.get(id_lattes)
+        if termos:
+            resultado[researcher_id] = sorted(termos)
+    return resultado
+
+
+def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[str]]]) -> dict[tuple[int, str], str]:
+    """Para cada (researcher_id, keyword_en, candidatos_pt do Lattes desse
+    pesquisador), acha a linha de pesquisa/palavra-chave real mais parecida
+    semanticamente (Sentence-BERT), via subprocess no venv de MATCHING/.
+    Só entra no resultado quando a similaridade é boa o bastante (ver
+    MATCHING/mapear_linha_lattes.py); o resto fica de fora e usa o fallback
+    de tradução simples."""
+    if not pares:
+        return {}
+    raiz = _raiz_projetos_dashboards(Path(__file__).resolve())
+    matching_python = raiz / "MATCHING" / ".venv" / "bin" / "python"
+    mapear_script = raiz / "MATCHING" / "mapear_linha_lattes.py"
+
+    entrada = [
+        {"researcher_id": rid, "keyword_en": kw, "candidatos_pt": candidatos}
+        for rid, kw, candidatos in pares
+    ]
+    with tempfile.TemporaryDirectory() as tmp:
+        entrada_path = Path(tmp) / "entrada.json"
+        entrada_path.write_text(json.dumps(entrada, ensure_ascii=False), encoding="utf-8")
+        proc = subprocess.run(
+            [str(matching_python), str(mapear_script), str(entrada_path)],
+            capture_output=True, text=True, check=True,
+        )
+    resultado = json.loads(proc.stdout)
+    return {
+        (r["researcher_id"], r["keyword_en"]): r["melhor_termo_pt"]
+        for r in resultado if r["melhor_termo_pt"]
+    }
+
+
 def export_edges(conn) -> list[dict]:
     rows = conn.execute(
         """SELECT researcher_id, foreign_author_name, foreign_author_orcid, foreign_author_openalex_id,
@@ -189,13 +293,36 @@ def export_edges(conn) -> list[dict]:
            FROM international_matches"""
     ).fetchall()
 
-    edges = []
+    parsed = []
+    pares_researcher_keyword: set[tuple[int, str]] = set()
     for rid, f_name, f_orcid, f_oaid, f_inst, f_country, matched_kw, score, sample_title, sample_doi in rows:
         keywords = [k.strip() for k in (matched_kw or "").split(",") if k.strip()]
+        pares_researcher_keyword.update((rid, kw) for kw in keywords)
+        parsed.append((rid, f_name, f_orcid, f_oaid, f_inst, f_country, keywords, sample_title, sample_doi))
+
+    # 1) tenta casar cada keyword com uma linha de pesquisa/palavra-chave
+    #    REAL do Lattes do próprio pesquisador (ver MATCHING/mapear_linha_lattes.py)
+    termos_lattes = _termos_lattes_por_researcher(conn)
+    pares_com_lattes = [
+        (rid, kw, termos_lattes[rid]) for rid, kw in sorted(pares_researcher_keyword) if rid in termos_lattes
+    ]
+    mapeamento_lattes = _mapear_keywords_para_lattes(pares_com_lattes)
+
+    # 2) fallback: tradução simples EN->PT pras keywords sem bom match no Lattes
+    #    (pesquisador sem linhas de pesquisa extraídas, ou nenhuma bateu bem)
+    keywords_sem_match = sorted({
+        kw for rid, kw in pares_researcher_keyword if (rid, kw) not in mapeamento_lattes
+    })
+    traducoes_fallback = _traduzir_keywords_en_pt(keywords_sem_match)
+
+    edges = []
+    for rid, f_name, f_orcid, f_oaid, f_inst, f_country, keywords, sample_title, sample_doi in parsed:
         for kw in keywords:
+            label_pt = mapeamento_lattes.get((rid, kw)) or traducoes_fallback.get(kw, kw)
             edges.append({
                 "researcher_id": rid,
-                "keyword": kw,
+                "keyword": label_pt,
+                "keyword_en": kw,
                 "foreign_author_name": f_name,
                 "foreign_author_orcid": f_orcid,
                 "foreign_author_openalex_id": f_oaid,
