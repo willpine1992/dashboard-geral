@@ -111,12 +111,15 @@ class GermanyMatcher:
         return out
 
 
-def compute_matches_for_researcher(
-    matcher: GermanyMatcher, researcher_orcid: str, keywords: list[str],
-    from_year: int, top_n: int = 8,
+def aggregate_candidates_for_researcher(
+    matcher: GermanyMatcher, researcher_orcid: str, keywords: list[str], from_year: int,
 ) -> list[dict]:
+    """Só a aquisição/agregação de candidatos (busca no OpenAlex) — sem
+    rankear. O ranking semântico (Sentence-BERT) é feito em lote por
+    run_germany_match.py, chamando MATCHING/rerank.py --batch uma única vez
+    para todos os pesquisadores (carregar o modelo por pesquisador seria
+    lento demais: ~10s x 135 pesquisadores)."""
     aggregated: dict[str, dict] = {}
-    first_keyword: dict[str, str] = {}
     for kw in keywords:
         for cand in matcher.candidates_for_keyword(kw, from_year):
             if not cand.get("openalex_id") or not cand.get("nome"):
@@ -134,25 +137,5 @@ def compute_matches_for_researcher(
                 "sample_doi": cand["sample_doi"],
             })
             entry["keywords"].add(kw)
-            first_keyword.setdefault(cand["openalex_id"], kw)
 
-    # Candidatos com >1 linha de pesquisa em comum são o sinal mais forte —
-    # sempre entram primeiro. Entre os que só batem em 1 linha, evita que a
-    # keyword mais frequente/genérica (processada primeiro) monopolize as
-    # vagas: distribui em round-robin entre as keywords buscadas, para que
-    # cada linha específica do pesquisador tenha chance de aparecer.
-    multi = [e for e in aggregated.values() if len(e["keywords"]) > 1]
-    multi.sort(key=lambda e: len(e["keywords"]), reverse=True)
-
-    single_by_kw: dict[str, list[dict]] = {kw: [] for kw in keywords}
-    for e in aggregated.values():
-        if len(e["keywords"]) == 1:
-            single_by_kw[first_keyword[e["openalex_id"]]].append(e)
-
-    round_robin: list[dict] = []
-    while any(single_by_kw.values()):
-        for kw in keywords:
-            if single_by_kw[kw]:
-                round_robin.append(single_by_kw[kw].pop(0))
-
-    return (multi + round_robin)[:top_n]
+    return [{**e, "keywords": sorted(e["keywords"])} for e in aggregated.values()]

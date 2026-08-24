@@ -96,6 +96,7 @@ COUNTRY_CENTER_FALLBACK: dict[str, tuple[float, float]] = {
     "África do Sul": (-28.8166, 24.9916),
     "Argélia": (28.0339, 1.6596),
     "Moçambique": (-18.6657, 35.5296),
+    "Reino Unido": (52.4862, -1.8904),  # Birmingham, UK
 }
 
 # Cidades citadas em nomes de instituição — fallback quando o Nominatim

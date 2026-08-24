@@ -224,7 +224,7 @@ def replace_international_matches(
            VALUES (?,?,?,?,?,?,?,?,?,?)""",
         [
             (researcher_id, m["nome"], m["orcid"], m["openalex_id"], m["instituicao"],
-             m["pais"], ", ".join(sorted(m["keywords"])), len(m["keywords"]),
+             m["pais"], ", ".join(sorted(m["keywords"])), m.get("score", len(m["keywords"])),
              m["sample_title"], m["sample_doi"])
             for m in matches
         ],
