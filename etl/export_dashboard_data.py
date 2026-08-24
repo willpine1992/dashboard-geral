@@ -212,10 +212,16 @@ def _traduzir_keywords_en_pt(keywords: list[str]) -> dict[str, str]:
     return {k: v.strip() for k, v in json.loads(proc.stdout).items()}
 
 
-def _termos_lattes_por_researcher(conn) -> dict[int, list[str]]:
-    """researcher_id (deste banco) -> linhas_pesquisa.titulo + palavras_chave.termo
+def _termos_lattes_por_researcher(conn) -> dict[int, list[dict]]:
+    """researcher_id (deste banco) -> lista de candidatos {"texto", "linha"}
     do MESMO pesquisador no Lattes (DATA BASE UEA/LATTES/data/gerbras.db),
-    casando pelo lattes_id (ORCID/ID Lattes bate 1:1 entre os dois bancos)."""
+    casando pelo lattes_id (ORCID/ID Lattes bate 1:1 entre os dois bancos).
+
+    "texto" é o que entra na comparação semântica (título da linha OU uma
+    palavra-chave dela — mais granular, ajuda a achar o match certo).
+    "linha" é sempre o título da linha de pesquisa-mãe — é o que acaba
+    aparecendo no gráfico, nunca a palavra-chave solta (o gráfico é
+    "Linhas de Pesquisa da UEA", não "Palavras-chave da UEA")."""
     import sqlite3
 
     raiz = _raiz_projetos_dashboards(Path(__file__).resolve())
@@ -230,31 +236,42 @@ def _termos_lattes_por_researcher(conn) -> dict[int, list[str]]:
         return {}
 
     lattes_con = sqlite3.connect(lattes_db_path)
-    termos_por_id_lattes: dict[str, set[str]] = {}
+    candidatos_por_id_lattes: dict[str, list[dict]] = {}
+
     for id_lattes, titulo in lattes_con.execute(
         """SELECT p.id_lattes, l.titulo FROM pesquisadores p
            JOIN pesquisador_linha pl ON pl.pesquisador_id = p.id
            JOIN linhas_pesquisa l ON l.id = pl.linha_id"""
     ).fetchall():
-        termos_por_id_lattes.setdefault(id_lattes, set()).add(titulo)
-    for id_lattes, termo in lattes_con.execute(
-        """SELECT p.id_lattes, pc.termo FROM pesquisadores p
+        candidatos_por_id_lattes.setdefault(id_lattes, []).append({"texto": titulo, "linha": titulo})
+
+    for id_lattes, termo, titulo_linha in lattes_con.execute(
+        """SELECT p.id_lattes, pc.termo, l.titulo FROM pesquisadores p
            JOIN pesquisador_linha pl ON pl.pesquisador_id = p.id
-           JOIN linha_palavra lpw ON lpw.linha_id = pl.linha_id
+           JOIN linhas_pesquisa l ON l.id = pl.linha_id
+           JOIN linha_palavra lpw ON lpw.linha_id = l.id
            JOIN palavras_chave pc ON pc.id = lpw.palavra_id"""
     ).fetchall():
-        termos_por_id_lattes.setdefault(id_lattes, set()).add(termo)
+        candidatos_por_id_lattes.setdefault(id_lattes, []).append({"texto": termo, "linha": titulo_linha})
     lattes_con.close()
 
     resultado = {}
     for researcher_id, id_lattes in lattes_id_por_researcher.items():
-        termos = termos_por_id_lattes.get(id_lattes)
-        if termos:
-            resultado[researcher_id] = sorted(termos)
+        candidatos = candidatos_por_id_lattes.get(id_lattes)
+        if candidatos:
+            # dedupe por (texto, linha), preservando ordem
+            vistos = set()
+            unicos = []
+            for c in candidatos:
+                chave = (c["texto"], c["linha"])
+                if chave not in vistos:
+                    vistos.add(chave)
+                    unicos.append(c)
+            resultado[researcher_id] = unicos
     return resultado
 
 
-def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[str]]]) -> dict[tuple[int, str], str]:
+def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[dict]]]) -> dict[tuple[int, str], str]:
     """Para cada (researcher_id, keyword_en, candidatos_pt do Lattes desse
     pesquisador), acha a linha de pesquisa/palavra-chave real mais parecida
     semanticamente (Sentence-BERT), via subprocess no venv de MATCHING/.
