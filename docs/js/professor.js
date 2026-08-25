@@ -28,7 +28,9 @@
   const country = first.foreign_country;
   const inst = institutions.find((i) => i.instituicao === instName);
 
-  const linhaCounts = countBy(matched, (e) => e.keyword);
+  // só linhas REAIS do Lattes entram aqui — keywords sem match (fallback de
+  // tradução) não são linhas de pesquisa cadastradas do professor
+  const linhaCounts = countBy(matched.filter((e) => e.linha_real), (e) => e.keyword);
   const linhas = topEntries(linhaCounts, 30);
 
   const ueaIds = [...new Set(matched.map((e) => e.researcher_id))];

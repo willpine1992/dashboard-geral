@@ -271,13 +271,18 @@ def _termos_lattes_por_researcher(conn) -> dict[int, list[dict]]:
     return resultado
 
 
-def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[dict]]]) -> dict[tuple[int, str], str]:
+def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[dict]]]) -> dict[tuple[int, str], dict]:
     """Para cada (researcher_id, keyword_en, candidatos_pt do Lattes desse
     pesquisador), acha a linha de pesquisa/palavra-chave real mais parecida
     semanticamente (Sentence-BERT), via subprocess no venv de MATCHING/.
     Só entra no resultado quando a similaridade é boa o bastante (ver
     MATCHING/mapear_linha_lattes.py); o resto fica de fora e usa o fallback
-    de tradução simples."""
+    de tradução simples.
+
+    Retorna {(researcher_id, keyword_en): {"melhor_termo_pt", "score"}} — o
+    "score" é a similaridade de cosseno (0 a 1) entre os embeddings SBERT da
+    keyword e da linha escolhida; fica salvo no edge (ver export_edges) pra
+    alimentar o card de similaridade abaixo do Sankey no dashboard."""
     if not pares:
         return {}
     raiz = _raiz_projetos_dashboards(Path(__file__).resolve())
@@ -297,7 +302,7 @@ def _mapear_keywords_para_lattes(pares: list[tuple[int, str, list[dict]]]) -> di
         )
     resultado = json.loads(proc.stdout)
     return {
-        (r["researcher_id"], r["keyword_en"]): r["melhor_termo_pt"]
+        (r["researcher_id"], r["keyword_en"]): {"melhor_termo_pt": r["melhor_termo_pt"], "score": r["score"]}
         for r in resultado if r["melhor_termo_pt"]
     }
 
@@ -335,10 +340,21 @@ def export_edges(conn) -> list[dict]:
     edges = []
     for rid, f_name, f_orcid, f_oaid, f_inst, f_country, keywords, sample_title, sample_doi in parsed:
         for kw in keywords:
-            label_pt = mapeamento_lattes.get((rid, kw)) or traducoes_fallback.get(kw, kw)
+            match = mapeamento_lattes.get((rid, kw))
+            linha_lattes = match["melhor_termo_pt"] if match else None
+            label_pt = linha_lattes or traducoes_fallback.get(kw, kw)
             edges.append({
                 "researcher_id": rid,
                 "keyword": label_pt,
+                # True só quando label_pt é o título de uma linha de pesquisa
+                # REAL do Lattes desse pesquisador (ver _mapear_keywords_para_lattes).
+                # False = "keyword" é só uma tradução literal da keyword OpenAlex
+                # (fallback), não uma linha cadastrada — não deve ser exibida
+                # como "Linha de Pesquisa" no dashboard.
+                "linha_real": bool(linha_lattes),
+                # similaridade de cosseno SBERT entre a keyword e a linha
+                # escolhida (0-1); só existe quando linha_real é True.
+                "cosine_similarity": round(match["score"], 4) if match else None,
                 "keyword_en": kw,
                 "foreign_author_name": f_name,
                 "foreign_author_orcid": f_orcid,

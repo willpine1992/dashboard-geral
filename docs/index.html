@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){var t=localStorage.getItem('gerbras-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>
 <title>PROPESP · Parcerias Internacionais UEA</title>
-<link rel="stylesheet" href="css/style.css?v=10" />
+<link rel="stylesheet" href="css/style.css?v=12" />
 </head>
 <body>
 
@@ -88,10 +88,38 @@
   <section class="col col--center">
     <div class="panel panel--grow">
       <div class="panel__header">
-        <span class="panel__title">Linhas de Pesquisa da UEA e Parcerias Potenciais no Mundo</span>
+        <div class="sankey-toolbar" id="sankey-col-toggles"></div>
         <span class="panel__hint" id="sankey-hint"></span>
       </div>
       <div class="panel__body" id="sankey-chart"></div>
+    </div>
+
+    <div class="panel" id="sbert-card">
+      <div class="panel__header">
+        <span class="panel__title">Similaridade semântica (SBERT)</span>
+        <span class="panel__hint" id="sbert-hint"></span>
+      </div>
+      <div class="sbert-body">
+        <div class="sbert-readout">
+          <div class="sbert-score" id="sbert-score">—</div>
+          <div class="sbert-pair" id="sbert-pair">Passe o mouse sobre uma conexão entre Linha de pesquisa e Key word matching.</div>
+        </div>
+        <div class="sbert-gauge">
+          <div class="sbert-gauge__track">
+            <div class="sbert-gauge__fill" id="sbert-fill"></div>
+            <div class="sbert-gauge__threshold" title="Limiar mínimo usado no matching (0,30)"></div>
+          </div>
+          <div class="sbert-gauge__scale"><span>0,0</span><span>0,5</span><span>1,0</span></div>
+        </div>
+        <p class="sbert-desc">
+          A <b>similaridade de cosseno</b> mede o ângulo entre dois vetores — aqui, os
+          embeddings que um modelo <b>SBERT</b> (Sentence-BERT) gera para a keyword do
+          OpenAlex e para a linha de pesquisa do Lattes. Quanto mais próxima de
+          <b>1</b>, mais parecido é o significado dos dois textos; próxima de <b>0</b>,
+          os textos não têm relação semântica. Só entram no Sankey como "Linha de
+          pesquisa" as conexões com similaridade ≥ 0,30 (linha tracejada no medidor).
+        </p>
+      </div>
     </div>
   </section>
 
@@ -134,8 +162,8 @@
 <script src="lib/d3.v7.min.js"></script>
 <script src="lib/d3-sankey.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
-<script src="js/common.js?v=10"></script>
-<script src="js/charts.js?v=10"></script>
-<script src="js/page1.js?v=10"></script>
+<script src="js/common.js?v=12"></script>
+<script src="js/charts.js?v=12"></script>
+<script src="js/page1.js?v=12"></script>
 </body>
 </html>

@@ -6,105 +6,113 @@
 const OTHER_INSTITUTIONS_LABEL = "Outras instituições";
 const OTHER_KEYWORDS_LABEL = "outras keywords";
 
-function buildSankeyGraph(edgeSubset, colorInfo, maxInstitutions, maxLinhas, maxKeywords) {
-  const instCounts = countBy(edgeSubset, (e) => e.foreign_institution);
-  const topInstList = topEntries(instCounts, maxInstitutions).map(([k]) => k);
-  const topInst = new Set(topInstList);
+// as 3 colunas do Sankey — cada uma pode ser ativada/desativada individualmente
+// (ver #sankey-col-toggles em page1.js); quando uma coluna do meio é
+// desativada, as colunas vizinhas se conectam direto uma na outra.
+const SANKEY_COLUMN_ORDER = ["linha", "keyword", "instituicao"];
+const SANKEY_COLUMN_DEFS = {
+  linha: { label: "Linha de pesquisa", key: (e) => e.keyword },
+  keyword: { label: "Key word matching", key: (e) => e.keyword_en },
+  instituicao: { label: "Instituição estrangeira", key: (e) => e.foreign_institution },
+};
 
+function buildSankeyGraph(edgeSubset, colorInfo, opts, activeIds) {
+  const maxByCol = { linha: opts.maxLinhas, keyword: opts.maxKeywords, instituicao: opts.maxInstitutions };
   // colorInfo.scale só cobre as poucas linhas com cor própria (paleta
   // categórica validada, não dá pra inventar mais cores). Além dessas, uma
   // lista maior de linhas (maxLinhas) ainda aparece nomeada individualmente
   // no gráfico, só que na cor neutra "Outras" — só o que sobra dessa lista
   // maior é que vira de fato o balde agregado "Outras linhas de pesquisa".
-  const linhaCounts = countBy(edgeSubset, (e) => e.keyword);
-  const topLinhasList = topEntries(linhaCounts, maxLinhas).map(([k]) => k);
-  const topLinhas = new Set(topLinhasList);
+  const otherLabelByCol = { linha: colorInfo.otherLabel, keyword: OTHER_KEYWORDS_LABEL, instituicao: OTHER_INSTITUTIONS_LABEL };
 
-  // keyword_en é a keyword OpenAlex bruta que gerou o match — é ela que
-  // conecta a linha de pesquisa (Lattes, PT) à instituição estrangeira.
-  const kwCounts = countBy(edgeSubset, (e) => e.keyword_en);
-  const topKwList = topEntries(kwCounts, maxKeywords).map(([k]) => k);
-  const topKw = new Set(topKwList);
+  const cols = activeIds.map((id) => {
+    const def = SANKEY_COLUMN_DEFS[id];
+    const counts = countBy(edgeSubset, def.key);
+    const topList = topEntries(counts, maxByCol[id]).map(([k]) => k);
+    return { id, key: def.key, label: def.label, otherLabel: otherLabelByCol[id], topSet: new Set(topList), topList };
+  });
 
-  const linkMapLK = new Map(); // linha -> keyword
-  const linkMapKI = new Map(); // keyword -> instituição
   const nodeRealTotal = new Map();
+  const linkMaps = cols.slice(0, -1).map(() => new Map());
+  // soma/contagem da similaridade de cosseno (SBERT) por link — só faz
+  // sentido no par linha->keyword, que é onde esse matching acontece
+  const linkScoreAgg = cols.slice(0, -1).map(() => new Map());
   const bump = (map, key) => map.set(key, (map.get(key) || 0) + 1);
 
   for (const e of edgeSubset) {
-    const linha = topLinhas.has(e.keyword) ? e.keyword : colorInfo.otherLabel;
-    const kw = topKw.has(e.keyword_en) ? e.keyword_en : OTHER_KEYWORDS_LABEL;
-    const inst = topInst.has(e.foreign_institution) ? e.foreign_institution : OTHER_INSTITUTIONS_LABEL;
-
-    bump(linkMapLK, linha + "|||" + kw);
-    bump(linkMapKI, kw + "|||" + inst);
-    bump(nodeRealTotal, "L::" + linha);
-    bump(nodeRealTotal, "K::" + kw);
-    bump(nodeRealTotal, "I::" + inst);
+    const vals = cols.map((c) => (c.topSet.has(c.key(e)) ? c.key(e) : c.otherLabel));
+    vals.forEach((v, i) => bump(nodeRealTotal, i + "::" + v));
+    for (let i = 0; i < vals.length - 1; i++) {
+      const linkKey = vals[i] + "|||" + vals[i + 1];
+      bump(linkMaps[i], linkKey);
+      if (cols[i].id === "linha" && e.cosine_similarity != null) {
+        const agg = linkScoreAgg[i].get(linkKey) || { sum: 0, n: 0 };
+        agg.sum += e.cosine_similarity;
+        agg.n += 1;
+        linkScoreAgg[i].set(linkKey, agg);
+      }
+    }
   }
 
-  const leftOrder = [...topLinhasList, colorInfo.otherLabel].filter((n) => nodeRealTotal.has("L::" + n));
-  const midOrder = [...topKwList, OTHER_KEYWORDS_LABEL].filter((n) => nodeRealTotal.has("K::" + n));
-  const rightOrder = [...topInstList, OTHER_INSTITUTIONS_LABEL].filter((n) => nodeRealTotal.has("I::" + n));
-
-  const nodes = [
-    ...leftOrder.map((name) => ({ name, side: "left", realValue: nodeRealTotal.get("L::" + name) || 0 })),
-    ...midOrder.map((name) => ({ name, side: "middle", realValue: nodeRealTotal.get("K::" + name) || 0 })),
-    ...rightOrder.map((name) => ({ name, side: "right", realValue: nodeRealTotal.get("I::" + name) || 0 })),
-  ];
-  const nodeIndex = new Map(nodes.map((n, i) => {
-    const prefix = n.side === "left" ? "L::" : n.side === "middle" ? "K::" : "I::";
-    return [prefix + n.name, i];
-  }));
+  const nodes = [];
+  const nodeIndex = new Map();
+  cols.forEach((c, i) => {
+    const order = [...c.topList, c.otherLabel].filter((n) => nodeRealTotal.has(i + "::" + n));
+    order.forEach((name) => {
+      nodeIndex.set(i + "::" + name, nodes.length);
+      nodes.push({
+        name, colId: c.id, colIndex: i,
+        isFirst: i === 0, isLast: i === cols.length - 1,
+        realValue: nodeRealTotal.get(i + "::" + name) || 0,
+      });
+    });
+  });
 
   // links que tocam um bucket "Outras..." recebem espessura fixa e fina no
   // layout, independente de quantos resultados foram agregados ali — isso
   // dá prioridade visual às linhas/keywords/instituições nomeadas
   // individualmente, que continuam proporcionais ao valor real
   const OTHER_LINK_WEIGHT = 1;
-  const isOtherBucket = (name) =>
-    name === colorInfo.otherLabel || name === OTHER_INSTITUTIONS_LABEL || name === OTHER_KEYWORDS_LABEL;
-
-  const linksLK = [...linkMapLK.entries()].map(([key, value]) => {
-    const [linha, kw] = key.split("|||");
-    const isOther = isOtherBucket(linha) || isOtherBucket(kw);
-    return {
-      source: nodeIndex.get("L::" + linha),
-      target: nodeIndex.get("K::" + kw),
-      value: isOther ? OTHER_LINK_WEIGHT : value,
-      realValue: value,
-      keyword: linha, // usado pra colorir o link pela linha de origem
-      tooltipLabel: linha,
-      isOther,
-    };
+  const links = [];
+  linkMaps.forEach((map, i) => {
+    const colA = cols[i], colB = cols[i + 1];
+    for (const [key, value] of map.entries()) {
+      const [a, b] = key.split("|||");
+      const isOther = a === colA.otherLabel || b === colB.otherLabel;
+      const scoreAgg = linkScoreAgg[i].get(key);
+      links.push({
+        source: nodeIndex.get(i + "::" + a),
+        target: nodeIndex.get((i + 1) + "::" + b),
+        value: isOther ? OTHER_LINK_WEIGHT : value,
+        realValue: value,
+        // só colore o link pela linha de origem quando a 1ª coluna do par É a
+        // linha de pesquisa; nos demais casos (ex: keyword -> instituição) uma
+        // keyword pode vir de mais de uma linha, então fica neutro
+        keyword: colA.id === "linha" ? a : null,
+        tooltipLabel: colA.id === "linha" ? a : b,
+        // similaridade de cosseno média (SBERT) das conexões agregadas nesse
+        // link — só existe no par linha->keyword; alimenta o card abaixo do
+        // gráfico (ver #sbert-card em page1.js)
+        avgSimilarity: scoreAgg ? scoreAgg.sum / scoreAgg.n : null,
+        isOther,
+      });
+    }
   });
-
-  const linksKI = [...linkMapKI.entries()].map(([key, value]) => {
-    const [kw, inst] = key.split("|||");
-    const isOther = isOtherBucket(kw) || isOtherBucket(inst);
-    return {
-      source: nodeIndex.get("K::" + kw),
-      target: nodeIndex.get("I::" + inst),
-      value: isOther ? OTHER_LINK_WEIGHT : value,
-      realValue: value,
-      keyword: null, // uma keyword pode vir de mais de uma linha — sem cor de origem única, fica neutro
-      tooltipLabel: kw,
-      isOther,
-    };
-  });
-
-  const links = [...linksLK, ...linksKI];
-  // desenhados primeiro = ficam por baixo quando cruzam com links nomeados,
-  // que são desenhados por cima logo em seguida
   links.sort((a, b) => (a.isOther === b.isOther ? 0 : a.isOther ? -1 : 1));
 
-  return { nodes, links };
+  return { nodes, links, cols };
 }
 
 function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
   const container = d3.select(el);
   container.selectAll("*").remove();
   const width = el.clientWidth, height = el.clientHeight;
+
+  const activeIds = SANKEY_COLUMN_ORDER.filter((id) => !opts.hiddenColumns || !opts.hiddenColumns.has(id));
+  if (activeIds.length < 2) {
+    container.append("div").attr("class", "empty-hint").text("Ative pelo menos duas colunas para ver as conexões.");
+    return;
+  }
   if (!edgeSubset.length || width < 10 || height < 10) {
     container.append("div").attr("class", "empty-hint").text("Nenhuma parceria potencial para os filtros selecionados.");
     return;
@@ -113,14 +121,15 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
   const maxInst = opts.maxInstitutions || 24;
   const maxLinhas = opts.maxLinhas || 22;
   const maxKeywords = opts.maxKeywords || 24;
-  const graph = buildSankeyGraph(edgeSubset, colorInfo, maxInst, maxLinhas, maxKeywords);
+  const graph = buildSankeyGraph(edgeSubset, colorInfo, { maxInstitutions: maxInst, maxLinhas, maxKeywords }, activeIds);
 
+  const HEADER_H = 30;
   const sankeyLayout = d3.sankey()
     .nodeId((d) => d.index)
     .nodeWidth(10)
     .nodePadding(10)
     .nodeSort((a, b) => (b.value || 0) - (a.value || 0))
-    .extent([[150, 6], [width - 165, height - 6]]);
+    .extent([[150, HEADER_H], [width - 165, height - 6]]);
 
   const graphNodes = graph.nodes.map((d, i) => ({ ...d, index: i }));
   const graphLinks = graph.links.map((d) => ({ ...d }));
@@ -128,7 +137,22 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
 
   const svg = container.append("svg").attr("width", width).attr("height", height);
 
-  const colorFor = (keyword) => (keyword === colorInfo.otherLabel ? colorInfo.otherColor : (colorInfo.scale.get(keyword) || colorInfo.otherColor));
+  const colorForName = (name) => (name === colorInfo.otherLabel ? colorInfo.otherColor : (colorInfo.scale.get(name) || colorInfo.otherColor));
+  const colorForNode = (d) => (d.colId === "linha" ? colorForName(d.name) : CHART_NODE_NEUTRAL);
+  const colorForLink = (keyword) => (keyword == null ? CHART_NODE_NEUTRAL : colorForName(keyword));
+
+  // legenda "Linha de pesquisa" / "Key word matching" / "Instituição
+  // estrangeira" acima de cada coluna atualmente visível
+  const headerG = svg.append("g").attr("class", "sankey-col-headers");
+  graph.cols.forEach((c, i) => {
+    const colNodes = nodes.filter((n) => n.colIndex === i);
+    if (!colNodes.length) return;
+    const cx = (d3.min(colNodes, (n) => n.x0) + d3.max(colNodes, (n) => n.x1)) / 2;
+    headerG.append("text")
+      .attr("class", "sankey-col-title")
+      .attr("x", cx).attr("y", HEADER_H - 12).attr("text-anchor", "middle")
+      .text(c.label);
+  });
 
   const linkG = svg.append("g").attr("fill", "none");
   const linkPaths = linkG.selectAll("path")
@@ -136,7 +160,7 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .join("path")
     .attr("class", "sankey-link")
     .attr("d", d3.sankeyLinkHorizontal())
-    .attr("stroke", (d) => colorFor(d.keyword))
+    .attr("stroke", (d) => colorForLink(d.keyword))
     .attr("stroke-opacity", (d) => (d.isOther ? 0.22 : 0.42))
     .attr("stroke-width", (d) => Math.max(d.isOther ? 0.6 : 1.2, d.width));
 
@@ -152,17 +176,17 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
     .attr("width", (d) => d.x1 - d.x0)
     .attr("height", (d) => Math.max(2, d.y1 - d.y0))
     .attr("rx", 3)
-    .attr("fill", (d) => (d.side === "left" ? colorFor(d.name) : CHART_NODE_NEUTRAL));
+    .attr("fill", colorForNode);
 
-  // a coluna do meio (keywords OpenAlex) não leva rótulo fixo — muitos nós
-  // lado a lado não deixariam espaço pro texto sem sobrepor a coluna
-  // seguinte; o nome dela ainda aparece via hover (title + tooltip)
-  nodeSel.filter((d) => d.side !== "middle").append("text")
-    .attr("x", (d) => (d.side === "left" ? d.x0 - 8 : d.x1 + 8))
+  // colunas que não são a primeira nem a última não levam rótulo fixo —
+  // muitos nós lado a lado não deixariam espaço pro texto sem sobrepor a
+  // coluna seguinte; o nome ainda aparece via hover (title + tooltip)
+  nodeSel.filter((d) => d.isFirst || d.isLast).append("text")
+    .attr("x", (d) => (d.isFirst ? d.x0 - 8 : d.x1 + 8))
     .attr("y", (d) => (d.y0 + d.y1) / 2)
     .attr("dy", "0.35em")
-    .attr("text-anchor", (d) => (d.side === "left" ? "end" : "start"))
-    .text((d) => truncateLabel(d.name, d.side === "left" ? 24 : 30));
+    .attr("text-anchor", (d) => (d.isFirst ? "end" : "start"))
+    .text((d) => truncateLabel(d.name, d.isFirst ? 24 : 30));
 
   nodeSel.append("title").text((d) => `${d.name}\n${fmt(d.realValue)} conexão(ões)`);
 
@@ -172,34 +196,36 @@ function renderSankey(el, edgeSubset, colorInfo, opts = {}) {
   }
 
   const isClickable = (d) =>
-    (d.side === "left" && d.name !== colorInfo.otherLabel) ||
-    (d.side === "right" && d.name !== OTHER_INSTITUTIONS_LABEL);
+    (d.colId === "linha" && d.name !== colorInfo.otherLabel) ||
+    (d.colId === "instituicao" && d.name !== OTHER_INSTITUTIONS_LABEL);
   const activeLinhas = opts.activeLinhas || new Set();
   nodeSel.classed("is-selected", (d) =>
-    (d.side === "left" && activeLinhas.has(d.name)) ||
-    (d.side === "right" && !!opts.activeInstituicao && d.name === opts.activeInstituicao)
+    (d.colId === "linha" && activeLinhas.has(d.name)) ||
+    (d.colId === "instituicao" && !!opts.activeInstituicao && d.name === opts.activeInstituicao)
   );
 
   linkPaths
     .on("mousemove", function (ev, d) {
       dim((l) => l !== d, (n) => n !== d.source && n !== d.target);
       showTooltip(ev.clientX, ev.clientY,
-        `<b>${d.tooltipLabel}</b><br>${truncateLabel(d.target.name, 40)}<br>${fmt(d.realValue)} conexão(ões)`);
+        `<b>${d.tooltipLabel}</b><br>${truncateLabel(d.target.name, 40)}<br>${fmt(d.realValue)} conexão(ões)` +
+        (d.avgSimilarity != null ? `<br>Similaridade (SBERT): ${d.avgSimilarity.toFixed(2)}` : ""));
+      opts.onLinkHover && opts.onLinkHover(d);
     })
-    .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); });
+    .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); opts.onLinkHover && opts.onLinkHover(null); });
 
   nodeSel
     .style("cursor", (d) => (isClickable(d) ? "pointer" : "default"))
     .on("click", (ev, d) => {
       if (!isClickable(d)) return;
-      if (d.side === "left") opts.onLinhaClick && opts.onLinhaClick(d.name);
-      else opts.onInstituicaoClick && opts.onInstituicaoClick(d.name);
+      if (d.colId === "linha") opts.onLinhaClick && opts.onLinhaClick(d.name);
+      else if (d.colId === "instituicao") opts.onInstituicaoClick && opts.onInstituicaoClick(d.name);
     })
     .on("mousemove", function (ev, d) {
       dim((l) => l.source !== d && l.target !== d, (n) => n !== d);
       showTooltip(ev.clientX, ev.clientY, `<b>${d.name}</b><br>${fmt(d.realValue)} conexão(ões)`);
     })
-    .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); });
+    .on("mouseleave", function () { dim(() => false, () => false); hideTooltip(); opts.onLinkHover && opts.onLinkHover(null); });
 }
 
 function truncateLabel(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }

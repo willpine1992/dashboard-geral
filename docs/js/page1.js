@@ -6,6 +6,9 @@
 
   let filters = readFiltersFromURL();
   let profSearchText = filters.q || "";
+  // colunas do Sankey desativadas pelo usuário (ver renderSankeyToggles) —
+  // ao desativar "keyword", linha de pesquisa conecta direto com instituição
+  const hiddenSankeyCols = new Set();
 
   /* ---- se chegamos de um link do Flow Map (?professor=ID), deriva os
      demais filtros a partir do perfil desse professor ---- */
@@ -112,6 +115,29 @@
     filters.instituicao = filters.instituicao === inst ? "" : inst;
     syncURL(); render();
   }
+  function toggleSankeyCol(id) {
+    if (hiddenSankeyCols.has(id)) {
+      hiddenSankeyCols.delete(id);
+    } else {
+      // mantém sempre pelo menos 2 colunas ativas — com 1 só não há conexão pra desenhar
+      if (SANKEY_COLUMN_ORDER.length - hiddenSankeyCols.size <= 2) return;
+      hiddenSankeyCols.add(id);
+    }
+    renderSankeyToggles();
+    render();
+  }
+
+  function renderSankeyToggles() {
+    const data = SANKEY_COLUMN_ORDER.map((id) => ({ id, label: SANKEY_COLUMN_DEFS[id].label }));
+    const btns = d3.select("#sankey-col-toggles")
+      .selectAll(".col-toggle")
+      .data(data, (d) => d.id)
+      .join("button")
+      .attr("type", "button")
+      .attr("class", (d) => "col-toggle" + (hiddenSankeyCols.has(d.id) ? " is-off" : " is-active"));
+    btns.text((d) => d.label);
+    btns.on("click", (_, d) => toggleSankeyCol(d.id));
+  }
 
   /* ---- estado corrente derivado, preenchido a cada render() ---- */
   let currentFilteredResearchers = [];
@@ -137,24 +163,33 @@
     const edgesForList = edges.filter((e) => filteredIds.has(e.researcher_id));
     const edgesForCharts = applyEdgeFilters(edges, filteredIds, filters);
 
+    // "Linhas de Pesquisa" só deve exibir linhas REAIS do Lattes do
+    // pesquisador — keywords sem match real (fallback de tradução) não são
+    // linhas cadastradas e não devem aparecer nesse painel/gráfico.
+    const edgesForListLinhaReal = edgesForList.filter((e) => e.linha_real);
+    const edgesForChartsLinhaReal = edgesForCharts.filter((e) => e.linha_real);
+
     renderPPGChecklist();
-    renderLinhasList(edgesForList);
+    renderLinhasList(edgesForListLinhaReal);
     renderProfessorList();
     renderForeignRanking(edgesForCharts);
 
-    const colorBase = edgesForCharts.length ? edgesForCharts : edgesForList;
+    const colorBase = edgesForChartsLinhaReal.length ? edgesForChartsLinhaReal : edgesForListLinhaReal;
     const colorInfo = buildLinhaColorScale(colorBase);
 
-    renderSankey(document.getElementById("sankey-chart"), edgesForCharts, colorInfo, {
+    renderSankey(document.getElementById("sankey-chart"), edgesForChartsLinhaReal, colorInfo, {
       onLinhaClick: toggleLinha,
       onInstituicaoClick: toggleInstituicao,
       activeLinhas: filters.linhas,
       activeInstituicao: filters.instituicao,
+      hiddenColumns: hiddenSankeyCols,
+      onLinkHover: updateSbertCard,
     });
+    updateSbertCard(null);
     renderCountryMap(document.getElementById("map-chart"), edgesForCharts);
-    renderBarChart(document.getElementById("bar-chart"), edgesForCharts, colorInfo, { n: 10 });
+    renderBarChart(document.getElementById("bar-chart"), edgesForChartsLinhaReal, colorInfo, { n: 10 });
 
-    d3.select("#sankey-hint").text(`${fmt(edgesForCharts.length)} conexões`);
+    d3.select("#sankey-hint").text(`${fmt(edgesForChartsLinhaReal.length)} conexões`);
     d3.select("#prof-count-hint").text(`${fmt(currentFilteredResearchers.length)} / ${fmt(researchers.length)}`);
   }
 
@@ -189,6 +224,32 @@
     rows.select("input").on("change", (_, d) => togglePPG(d));
 
     d3.select("#ppg-count-hint").text(filters.ppgs.size ? `${filters.ppgs.size} selecionado(s)` : "");
+  }
+
+  function updateSbertCard(link) {
+    const scoreEl = document.getElementById("sbert-score");
+    const fillEl = document.getElementById("sbert-fill");
+    const pairEl = document.getElementById("sbert-pair");
+    const hintEl = document.getElementById("sbert-hint");
+    if (!scoreEl) return;
+
+    if (!link || link.avgSimilarity == null) {
+      scoreEl.textContent = "—";
+      scoreEl.style.color = "";
+      fillEl.style.width = "0%";
+      hintEl.textContent = "";
+      pairEl.innerHTML = hiddenSankeyCols.has("keyword")
+        ? "Ative a coluna <b>Key word matching</b> para ver a similaridade desta conexão."
+        : "Passe o mouse sobre uma conexão entre <b>Linha de pesquisa</b> e <b>Key word matching</b>.";
+      return;
+    }
+
+    const sim = Math.max(0, Math.min(1, link.avgSimilarity));
+    scoreEl.textContent = sim.toFixed(3).replace(".", ",");
+    scoreEl.style.color = sim >= 0.3 ? "var(--ink-primary)" : "var(--ink-muted)";
+    fillEl.style.width = `${(sim * 100).toFixed(1)}%`;
+    hintEl.textContent = `${fmt(link.realValue)} conexão(ões)`;
+    pairEl.innerHTML = `<b>${link.tooltipLabel}</b> ↔ ${link.target.name}`;
   }
 
   function renderLinhasList(edgeSubset) {
@@ -252,5 +313,6 @@
       <span class="rank__val">${d.count}</span>`);
   }
 
+  renderSankeyToggles();
   render();
 })();

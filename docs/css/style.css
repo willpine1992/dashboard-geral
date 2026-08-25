@@ -386,6 +386,52 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 .sankey-link { fill: none; transition: opacity var(--dur-fast) var(--ease), stroke-width var(--dur-fast) var(--ease); cursor: pointer; }
 .sankey-link.is-dim { opacity: 0.06; }
 .sankey-link:hover { opacity: 0.95 !important; }
+.sankey-col-title {
+  font-family: var(--font); font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; fill: var(--ink-muted);
+}
+
+/* botões de ativar/desativar cada coluna do Sankey */
+.sankey-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.col-toggle {
+  font-family: var(--font); font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--ink-secondary); background: var(--surface-alt);
+  border: 1px solid var(--border-hairline); border-radius: var(--radius-pill);
+  padding: 5px 12px; cursor: pointer; transition: all var(--dur-fast) var(--ease);
+}
+.col-toggle:hover { border-color: var(--border-strong); color: var(--ink-primary); }
+.col-toggle.is-active { background: var(--accent-wash); border-color: var(--accent); color: var(--ink-primary); }
+.col-toggle.is-off { opacity: 0.55; text-decoration: line-through; }
+
+/* card dinâmico de similaridade de cosseno (SBERT), abaixo do Sankey */
+#sbert-card { flex: none; }
+.sbert-body { display: flex; flex-direction: column; gap: 10px; }
+.sbert-readout { display: flex; align-items: baseline; gap: 12px; }
+.sbert-score {
+  font-size: 26px; font-weight: 800; color: var(--ink-primary);
+  font-variant-numeric: tabular-nums; min-width: 64px;
+  transition: color var(--dur-fast) var(--ease);
+}
+.sbert-pair { font-size: 12.5px; font-weight: 600; color: var(--ink-secondary); line-height: 1.4; }
+.sbert-pair b { color: var(--ink-primary); }
+.sbert-gauge__track {
+  position: relative; height: 8px; border-radius: var(--radius-pill);
+  background: var(--surface-alt); border: 1px solid var(--border-hairline); overflow: visible;
+}
+.sbert-gauge__fill {
+  height: 100%; width: 0%; border-radius: var(--radius-pill);
+  background: var(--accent-strong); transition: width var(--dur-mid) var(--ease);
+}
+.sbert-gauge__threshold {
+  position: absolute; top: -3px; bottom: -3px; left: 30%;
+  width: 2px; background: var(--ink-muted); opacity: 0.6;
+}
+.sbert-gauge__scale {
+  display: flex; justify-content: space-between; margin-top: 4px;
+  font-size: 10px; color: var(--ink-muted); font-variant-numeric: tabular-nums;
+}
+.sbert-desc { font-size: 11.5px; line-height: 1.55; color: var(--ink-muted); margin: 0; }
+.sbert-desc b { color: var(--ink-secondary); }
 
 /* ==========================================================================
    Word cloud / mapa / barras
