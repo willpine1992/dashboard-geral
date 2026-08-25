@@ -83,6 +83,57 @@ MANUAL_INSTITUTION_COORDS: dict[str, tuple[float, float]] = {
     "University of Lübeck": (53.8655, 10.6866),
     "University of Siegen": (50.9106, 8.0169),
     "University of Wuppertal": (51.2465, 7.1500),
+    # Adicionadas em 2026-08-25: instituições que ficaram presas no
+    # fallback de centro do país (Nominatim não resolveu pelo nome, ou só
+    # deu falso-positivo em outro país — ex.: "Centre for Higher Education"
+    # batia em Kyiv, "Total (Germany)" batia na África do Sul). Coordenada
+    # aproximada ao nível da cidade-sede.
+    "Airbus (Germany)": (53.5350, 9.8350),  # Hamburg-Finkenwerder
+    "Amazon (Germany)": (48.1351, 11.5820),  # Munique (sede legal Amazon Alemanha)
+    "Amgen (Germany)": (48.1351, 11.5820),  # Munique
+    "Baden-Wuerttemberg Cooperative State University": (48.7758, 9.1829),  # Stuttgart (presidência central)
+    "Catholic University of Eichstätt-Ingolstadt": (48.8909, 11.1866),  # Eichstätt
+    "Centre for European Economic Research": (49.4875, 8.4660),  # Mannheim (ZEW)
+    "Centre for Higher Education": (51.9068, 8.3799),  # Gütersloh (CHE)
+    "Deutsche Montan Technologie (Germany)": (51.4556, 7.0116),  # Essen (DMT GmbH)
+    "European Forest Institute": (50.7374, 7.0982),  # Bonn (escritório regional na Alemanha)
+    "European University Viadrina": (52.3474, 14.5501),  # Frankfurt (Oder)
+    "Evonik (Germany)": (51.4556, 7.0116),  # Essen
+    "Federal Institute For Materials Research and Testing": (52.5170, 13.3889),  # Berlim (BAM)
+    "Federal Institute for Occupational Safety and Health": (51.5136, 7.4653),  # Dortmund (BAuA)
+    "Federal Institute for Risk Assessment": (52.5170, 13.3889),  # Berlim (BfR)
+    "GEOMAR Helmholtz Centre for Ocean Research Kiel": (54.3233, 10.1228),  # Kiel
+    "GESIS - Leibniz Institute for the Social Sciences": (50.9375, 6.9603),  # Colônia
+    "German Climate Computing Centre": (53.5511, 9.9937),  # Hamburgo (DKRZ)
+    "German Insurance Association": (52.5170, 13.3889),  # Berlim (GDV)
+    "Hologic (Germany)": (50.0782, 8.2398),  # Wiesbaden
+    "IZA - Institute of Labor Economics": (50.7374, 7.0982),  # Bonn
+    "Ifo Institute for Economic Research": (48.1351, 11.5820),  # Munique
+    "Johner Institut (Germany)": (47.6779, 9.1732),  # Konstanz
+    "LOEWE Centre for Translational Biodiversity Genomics": (50.1109, 8.6821),  # Frankfurt am Main
+    "Leibniz Institute for Agricultural Engineering and Bioeconomy": (52.3906, 13.0645),  # Potsdam (ATB)
+    "Leibniz Institute of Photonic Technology": (50.9279, 11.5892),  # Jena (IPHT)
+    "Martin Luther University Halle-Wittenberg": (51.4970, 11.9683),  # Halle
+    "Max Planck Institute for Biophysical Chemistry": (51.5413, 9.9158),  # Göttingen
+    "Max Planck Institute for Comparative Public Law and International Law": (49.4093, 8.6725),  # Heidelberg
+    "Max Planck Institute for Evolutionary Biology": (54.1614, 10.4221),  # Plön
+    "Max Planck Institute for Social Anthropology": (51.4970, 11.9683),  # Halle
+    "Max Planck Institute for the Science of Light": (49.5897, 11.0040),  # Erlangen
+    "Max Planck Institute for the Study of Crime, Security and Law": (47.9990, 7.8421),  # Freiburg
+    "Munich Leukemia Laboratory (Germany)": (48.1351, 11.5820),  # Munique
+    "Munich School of Philosophy": (48.1351, 11.5820),  # Munique
+    "National Center for Tumor Diseases": (49.4093, 8.6725),  # Heidelberg
+    "Research Institute for Farm Animal Biology (FBN)": (53.9350, 12.2900),  # Dummerstorf
+    "Robert Bosch (Germany)": (48.8143, 9.1862),  # Gerlingen (sede Bosch)
+    "Total (Germany)": (52.5170, 13.3889),  # Berlim (escritório TotalEnergies Alemanha)
+    "Trier University of Applied Sciences": (49.6081, 7.1693),  # Trier
+    "University Hospital Schleswig-Holstein": (54.3233, 10.1228),  # Kiel (campus Kiel)
+    "University Hospitals of the Ruhr-University of Bochum": (51.4818, 7.2162),  # Bochum
+    "University of Algiers Benyoucef Benkhedda": (36.7538, 3.0588),  # Argel (capital) — sede principal
+    "University of Koblenz and Landau": (50.3569, 7.5890),  # Koblenz
+    "University of Würzburg": (49.7913, 9.9534),  # Würzburg
+    "Zeppelin Universität gemeinnützige GmbH": (47.6558, 9.4794),  # Friedrichshafen
+    "Zoological Research Museum Alexander Koenig": (50.7374, 7.0982),  # Bonn
 }
 
 GERMANY_CENTER = (51.1657, 10.4515)
@@ -124,11 +175,14 @@ def resolve_institution_coords(inst: str, country: str, geocoder: Geocoder) -> t
     lat, lon = geocoder.geocode(inst, None, country)
     if lat is not None:
         return lat, lon
-    # dicas manuais abaixo foram curadas só para instituições alemãs que o
-    # Nominatim não resolve (institutos "guarda-chuva" sem tag OSM própria)
+    # MANUAL_INSTITUTION_COORDS vale para qualquer país (curado manualmente
+    # p/ instituições "guarda-chuva" sem tag OSM própria que o Nominatim não
+    # resolve pelo nome). GERMAN_CITY_HINTS continua restrito à Alemanha —
+    # são substrings de nomes de cidade alemã, não fazem sentido p/ outros
+    # países.
+    if inst in MANUAL_INSTITUTION_COORDS:
+        return MANUAL_INSTITUTION_COORDS[inst]
     if country == "Alemanha":
-        if inst in MANUAL_INSTITUTION_COORDS:
-            return MANUAL_INSTITUTION_COORDS[inst]
         low = inst.lower()
         for city, coords in GERMAN_CITY_HINTS.items():
             if city in low:

@@ -89,6 +89,15 @@
     populateSelect("#filter-pais", ALL_PAISES, "");
     syncURL(); render();
   });
+  d3.select("#btn-report").on("click", () => {
+    generateProspectingReport({
+      researchers: currentFilteredResearchers,
+      edges: currentEdgesForReport,
+      filters,
+      researcherById,
+      totals: { researchers: researchers.length, institutions: institutions.length },
+    });
+  });
 
   window.addEventListener("resize", debounce(render, 200));
   window.addEventListener("gerbras:themechange", render);
@@ -141,6 +150,7 @@
 
   /* ---- estado corrente derivado, preenchido a cada render() ---- */
   let currentFilteredResearchers = [];
+  let currentEdgesForReport = [];
 
   function render() {
     currentFilteredResearchers = applyResearcherFilters(researchers, filters);
@@ -162,6 +172,7 @@
 
     const edgesForList = edges.filter((e) => filteredIds.has(e.researcher_id));
     const edgesForCharts = applyEdgeFilters(edges, filteredIds, filters);
+    currentEdgesForReport = edgesForCharts;
 
     // "Linhas de Pesquisa" só deve exibir linhas REAIS do Lattes do
     // pesquisador — keywords sem match real (fallback de tradução) não são
