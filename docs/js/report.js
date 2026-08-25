@@ -315,23 +315,47 @@ ${detailSection}
 </html>`;
 }
 
-/* ---------- ponto de entrada usado pela página ---------- */
-async function generateProspectingReport({ researchers, edges, filters, researcherById, totals }) {
+/* ---------- ponto de entrada usado pela página ----------
+   window.open() PRECISA ser chamado de forma síncrona, dentro do próprio
+   handler de clique — se rolar depois de um `await` (ex.: esperando o fetch
+   da logo), a maioria dos navegadores não reconhece mais o gesto do usuário
+   e bloqueia a aba silenciosamente (sem erro no console, sem cair no
+   `if (!win)`). Por isso abrimos a aba (em branco, com uma mensagem de
+   carregando) ANTES de qualquer await, e só depois preenchemos o conteúdo. */
+function generateProspectingReport({ researchers, edges, filters, researcherById, totals }) {
+  const win = window.open("", "_blank");
+  if (!win) {
+    alert("O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site e tente novamente.");
+    return;
+  }
+  win.document.write(
+    '<!doctype html><meta charset="utf-8"><title>Gerando relatório…</title>' +
+    '<body style="font-family:-apple-system,sans-serif;color:#3a3a3c;padding:40px;">Gerando relatório de prospecção…</body>'
+  );
+
   const btn = document.getElementById("btn-report");
   if (btn) { btn.disabled = true; btn.textContent = "Gerando…"; }
-  try {
-    const logoDataURI = await fetchLogoDataURI();
-    const html = buildReportHTML({ researchers, edges, filters, researcherById, totals, logoDataURI });
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const win = window.open(url, "_blank");
-    if (!win) {
-      alert("O navegador bloqueou a abertura da nova aba. Permita pop-ups para este site e tente novamente.");
-    }
-    setTimeout(() => URL.revokeObjectURL(url), 30000);
-  } finally {
-    if (btn) { btn.disabled = false; btn.textContent = "Gerar relatório de prospecção"; }
-  }
+
+  fetchLogoDataURI()
+    .then((logoDataURI) => {
+      const html = buildReportHTML({ researchers, edges, filters, researcherById, totals, logoDataURI });
+      win.document.open();
+      win.document.write(html);
+      win.document.close();
+    })
+    .catch((err) => {
+      win.document.open();
+      win.document.write(
+        '<!doctype html><meta charset="utf-8"><title>Erro</title>' +
+        '<body style="font-family:-apple-system,sans-serif;color:#b00020;padding:40px;">' +
+        "Erro ao gerar o relatório: " + reportEsc(err && err.message ? err.message : String(err)) + "</body>"
+      );
+      win.document.close();
+      console.error("generateProspectingReport falhou:", err);
+    })
+    .finally(() => {
+      if (btn) { btn.disabled = false; btn.textContent = "Gerar relatório de prospecção"; }
+    });
 }
 
 window.generateProspectingReport = generateProspectingReport;

@@ -330,7 +330,7 @@ function normalizeCountry(name) {
   // nomes em inglês do TopoJSON -> nomes em português usados em foreign_country
   const map = {
     Germany: "Alemanha", Ghana: "Gana", Angola: "Angola", Algeria: "Argélia",
-    Mozambique: "Moçambique", "South Africa": "África do Sul",
+    Mozambique: "Moçambique", "South Africa": "África do Sul", "United Kingdom": "Reino Unido",
   };
   return map[name] || name;
 }
