@@ -17,7 +17,30 @@ let CAT_COLORS = [
   "#e34948", // 8 vermelho — reservado p/ bucket "Outras"
 ];
 let OTHER_COLOR = CAT_COLORS[7];
-const MAX_CATEGORICAL_INDIVIDUAL = 7; // top-N linhas de pesquisa ganham cor própria; resto -> "Outras"
+const MAX_CATEGORICAL_INDIVIDUAL = 7; // até 7 linhas visíveis: usa a paleta validada (CAT_COLORS) tal e qual
+// acima de 7 linhas visíveis simultaneamente (ex.: Sankey sem filtro, que mostra
+// até maxLinhas=22 nós nomeados — ver charts.js), cada uma ainda ganha cor
+// própria, só que gerada por rotação de matiz (ângulo áureo) em vez de vir de
+// uma paleta fixa — não existe mais "paleta categórica validada" pra tantas
+// cores simultâneas, então isso é uma extensão best-effort, não substitui os
+// 7 tons cuidadosamente escolhidos. Cobre generosamente o maxLinhas do Sankey;
+// o que ainda sobrar cai no bucket cinza "Outras linhas de pesquisa".
+const MAX_CATEGORICAL_TOTAL = 24;
+const GOLDEN_ANGLE_DEG = 137.508;
+
+function generateCategoricalColors(n) {
+  if (n <= CAT_COLORS.length - 1) return CAT_COLORS.slice(0, n);
+  const dark = getTheme() === "dark";
+  const s = dark ? 62 : 68;
+  const l = dark ? 64 : 47;
+  const startHue = 205; // próximo do azul do slot 1, pra dar continuidade visual
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const hue = (startHue + i * GOLDEN_ANGLE_DEG) % 360;
+    out.push(`hsl(${hue.toFixed(1)}, ${s}%, ${l}%)`);
+  }
+  return out;
+}
 
 let GREEN_SEQUENTIAL = ["#eaf7f0", "#c7ecda", "#96dab9", "#5fc192", "#2e9e6c", "#0f7a4d", "#0b5c3a"];
 let CHART_MAP_FILL = "#eef5f1";
@@ -137,13 +160,15 @@ function topEntries(map, n) {
   return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
-/* categoriza as top-N linhas de pesquisa presentes num conjunto de edges,
-   dobrando o resto em "Outras linhas de pesquisa" */
+/* dá uma cor própria a cada uma das top-N linhas de pesquisa presentes num
+   conjunto de edges (N = MAX_CATEGORICAL_TOTAL, cobre o maxLinhas do Sankey),
+   dobrando só o que sobrar disso em "Outras linhas de pesquisa" */
 function buildLinhaColorScale(edgeSubset) {
   const counts = countBy(edgeSubset, (e) => e.keyword);
-  const top = topEntries(counts, MAX_CATEGORICAL_INDIVIDUAL).map(([k]) => k);
+  const top = topEntries(counts, MAX_CATEGORICAL_TOTAL).map(([k]) => k);
+  const palette = generateCategoricalColors(top.length);
   const scale = new Map();
-  top.forEach((k, i) => scale.set(k, CAT_COLORS[i]));
+  top.forEach((k, i) => scale.set(k, palette[i]));
   return { scale, top, otherLabel: "Outras linhas de pesquisa", otherColor: OTHER_COLOR };
 }
 function colorForLinha(keyword, colorInfo) {
