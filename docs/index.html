@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){var t=localStorage.getItem('gerbras-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>
 <title>PROPESP · Parcerias Internacionais UEA</title>
-<link rel="stylesheet" href="css/style.css?v=12" />
+<link rel="stylesheet" href="css/style.css?v=13" />
 </head>
 <body>
 
@@ -37,7 +37,7 @@
   <!-- ===================== Coluna 1 — filtros ===================== -->
   <section class="col col--left">
 
-    <div class="panel">
+    <div class="panel" data-help="Filtra os pesquisadores da UEA pela grande área e pela área temática (CNPq) cadastradas no Lattes. Escolher uma grande área restringe as opções de área temática logo abaixo.">
       <div class="panel__header"><span class="panel__title">Grande Área</span></div>
       <div class="field">
         <select id="filter-grande-area" class="dropdown">
@@ -51,7 +51,7 @@
       </div>
     </div>
 
-    <div class="panel">
+    <div class="panel" data-help="Filtra os pesquisadores pelo Programa de Pós-Graduação (PPG) da UEA ao qual estão vinculados. O número ao lado de cada item mostra quantos pesquisadores atendem também aos demais filtros ativos.">
       <div class="panel__header">
         <span class="panel__title">Programas (PPG)</span>
         <span class="panel__hint" id="ppg-count-hint"></span>
@@ -59,7 +59,7 @@
       <div class="checklist" id="filter-ppg-list"></div>
     </div>
 
-    <div class="panel panel--grow" style="height:440px;">
+    <div class="panel panel--grow" style="height:440px;" data-help="Lista as linhas de pesquisa (keywords do Lattes) dos pesquisadores da UEA que atendem aos filtros ativos. Clique numa linha para filtrar o painel só por ela — o número ao lado é quantas conexões internacionais aquela linha tem.">
       <div class="panel__header">
         <span class="panel__title">Linhas de pesquisa</span>
         <span class="panel__hint">clique p/ filtrar</span>
@@ -69,7 +69,7 @@
       </div>
     </div>
 
-    <div class="panel panel--grow" style="height:440px;">
+    <div class="panel panel--grow" style="height:440px;" data-help="Lista os pesquisadores da UEA que atendem aos filtros ativos. Busque pelo nome ou clique num professor para focar o painel só nas conexões dele.">
       <div class="panel__header">
         <span class="panel__title">Professores</span>
         <span class="panel__hint" id="prof-count-hint"></span>
@@ -87,7 +87,7 @@
 
   <!-- ===================== Coluna 2 — Sankey ===================== -->
   <section class="col col--center">
-    <div class="panel panel--grow">
+    <div class="panel panel--grow" data-help="Diagrama de fluxo (Sankey): liga a linha de pesquisa do pesquisador da UEA à keyword do OpenAlex que gerou o match e, desta, à instituição estrangeira onde foi encontrado um pesquisador com pesquisa semelhante. A espessura de cada faixa é proporcional ao número de conexões; passe o mouse sobre uma faixa para ver o valor exato.">
       <div class="panel__header">
         <div class="sankey-toolbar" id="sankey-col-toggles"></div>
         <span class="panel__hint" id="sankey-hint"></span>
@@ -95,7 +95,7 @@
       <div class="panel__body" id="sankey-chart"></div>
     </div>
 
-    <div class="panel" id="sbert-card">
+    <div class="panel" id="sbert-card" data-help="Mede, de 0 a 1, o quão parecido é o significado entre a keyword do OpenAlex e a linha de pesquisa do Lattes, usando um modelo de linguagem (SBERT). Passe o mouse sobre uma faixa do Sankey acima (entre Linha de pesquisa e Key word matching) para ver o valor de um par específico aqui.">
       <div class="panel__header">
         <span class="panel__title">Similaridade semântica (SBERT)</span>
         <span class="panel__hint" id="sbert-hint"></span>
@@ -127,7 +127,7 @@
   <!-- ===================== Coluna 3 — visão geral ===================== -->
   <section class="col col--right">
 
-    <div class="panel">
+    <div class="panel" data-help="Filtra as conexões pelo país de destino da instituição estrangeira.">
       <div class="panel__header"><span class="panel__title">País</span></div>
       <div class="field">
         <select id="filter-pais" class="dropdown">
@@ -136,17 +136,17 @@
       </div>
     </div>
 
-    <div class="panel" style="height:320px; display:flex; flex-direction:column;">
+    <div class="panel" style="height:320px; display:flex; flex-direction:column;" data-help="Mapa de calor: quanto mais escura a cor de um país, mais conexões (matches) a UEA tem com instituições localizadas lá, considerando os filtros ativos. Passe o mouse sobre um país para ver o número exato.">
       <div class="panel__header"><span class="panel__title">País estrangeiro</span></div>
       <div class="panel__body" id="map-chart" style="flex:1; min-height:0;"></div>
     </div>
 
-    <div class="panel" style="height:380px; display:flex; flex-direction:column;">
+    <div class="panel" style="height:380px; display:flex; flex-direction:column;" data-help="Ranking das linhas de pesquisa mais frequentes entre as conexões filtradas no momento, com a contagem de conexões de cada uma.">
       <div class="panel__header"><span class="panel__title">Linhas de pesquisa</span></div>
       <div class="panel__body" id="bar-chart" style="flex:1; min-height:0;"></div>
     </div>
 
-    <div class="panel panel--grow" style="height:500px;">
+    <div class="panel panel--grow" style="height:500px;" data-help="Ranking dos pesquisadores estrangeiros com mais conexões (matches) com professores da UEA, considerando os filtros ativos. Clique num nome para abrir o perfil completo daquele pesquisador.">
       <div class="panel__header">
         <span class="panel__title">Pesquisadores estrangeiros</span>
         <span class="panel__hint">por conexões</span>
@@ -163,9 +163,9 @@
 <script src="lib/d3.v7.min.js"></script>
 <script src="lib/d3-sankey.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
-<script src="js/common.js?v=12"></script>
+<script src="js/common.js?v=13"></script>
 <script src="js/charts.js?v=13"></script>
 <script src="js/report.js?v=13"></script>
-<script src="js/page1.js?v=13"></script>
+<script src="js/page1.js?v=14"></script>
 </body>
 </html>

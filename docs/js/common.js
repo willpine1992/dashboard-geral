@@ -64,6 +64,7 @@ function initThemeToggle() {
     btn.setAttribute("aria-label", theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro");
     btn.addEventListener("click", toggleTheme);
   }
+  initHelpTooltips();
 }
 
 async function loadData() {
@@ -171,6 +172,79 @@ function moveTooltip(x, y) {
 }
 function hideTooltip() {
   if (tooltipEl) tooltipEl.classList.remove("is-visible");
+}
+
+/* ---------- tooltip de ajuda: hover parado por 3s sobre [data-help] ----------
+   Independente do tooltip de dados (showTooltip/hideTooltip acima, usado
+   pelos gráficos D3 em cima de pontos/links específicos) — este mostra uma
+   legenda explicando o card/gráfico como um todo, então usa seu próprio
+   elemento e um delay bem maior. Delegação em document (mouseover/mouseout,
+   que borbulham) em vez de mouseenter/mouseleave direto nos elementos, para
+   funcionar em cards renderizados dinamicamente sem precisar re-inicializar. */
+const HELP_HOLD_MS = 3000;
+let helpTooltipEl = null;
+let helpTimer = null;
+let helpActiveTarget = null;
+
+function ensureHelpTooltip() {
+  if (!helpTooltipEl) {
+    helpTooltipEl = document.createElement("div");
+    helpTooltipEl.className = "help-tooltip";
+    document.body.appendChild(helpTooltipEl);
+  }
+  return helpTooltipEl;
+}
+
+function positionHelpTooltip(x, y) {
+  const el = helpTooltipEl;
+  if (!el) return;
+  const pad = 16;
+  const rect = el.getBoundingClientRect();
+  let left = x + pad;
+  let top = y + pad;
+  if (left + rect.width > window.innerWidth - 8) left = x - rect.width - pad;
+  if (top + rect.height > window.innerHeight - 8) top = y - rect.height - pad;
+  el.style.left = Math.max(8, left) + "px";
+  el.style.top = Math.max(8, top) + "px";
+}
+
+function showHelpTooltip(text, x, y) {
+  const el = ensureHelpTooltip();
+  el.textContent = text;
+  el.classList.add("is-visible");
+  positionHelpTooltip(x, y);
+}
+
+function hideHelpTooltip() {
+  clearTimeout(helpTimer);
+  helpTimer = null;
+  helpActiveTarget = null;
+  if (helpTooltipEl) helpTooltipEl.classList.remove("is-visible");
+}
+
+function initHelpTooltips() {
+  let lastX = 0, lastY = 0;
+  document.addEventListener("mousemove", (ev) => { lastX = ev.clientX; lastY = ev.clientY; }, { passive: true });
+
+  document.addEventListener("mouseover", (ev) => {
+    const target = ev.target.closest("[data-help]");
+    if (!target || target === helpActiveTarget) return;
+    hideHelpTooltip();
+    helpActiveTarget = target;
+    helpTimer = setTimeout(() => {
+      showHelpTooltip(target.getAttribute("data-help"), lastX, lastY);
+    }, HELP_HOLD_MS);
+  });
+
+  document.addEventListener("mouseout", (ev) => {
+    const target = ev.target.closest("[data-help]");
+    // relatedTarget é null ao sair da janela; contains() cobre mover entre filhos do mesmo card
+    if (!target || (ev.relatedTarget && target.contains(ev.relatedTarget))) return;
+    hideHelpTooltip();
+  });
+
+  window.addEventListener("scroll", hideHelpTooltip, true);
+  window.addEventListener("blur", hideHelpTooltip);
 }
 
 function fmt(n) { return n.toLocaleString("pt-BR"); }

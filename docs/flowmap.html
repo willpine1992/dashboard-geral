@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){var t=localStorage.getItem('gerbras-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>
 <title>GERBRAS · Mapa de Fluxo</title>
-<link rel="stylesheet" href="css/style.css?v=7" />
+<link rel="stylesheet" href="css/style.css?v=8" />
 </head>
 <body>
 
@@ -36,10 +36,10 @@
       <h1>Fluxo de parcerias potenciais</h1>
       <p>Cada linha liga Manaus a uma instituição estrangeira com pesquisa em comum com professores da UEA. Espessura e cor indicam o volume de conexões. Arraste para girar o globo, use o scroll para zoom, e clique numa linha para ver os detalhes e voltar ao painel já filtrado.</p>
     </div>
-    <div class="flow-legend" id="flow-legend"></div>
+    <div class="flow-legend" id="flow-legend" data-help="Quanto mais escura e grossa a linha do arco, mais conexões (matches) aquele destino tem com a UEA."></div>
   </div>
 
-  <div class="panel panel--flush flow-map-wrap">
+  <div class="panel panel--flush flow-map-wrap" data-help="Globo 3D: cada arco liga Manaus a uma instituição estrangeira com pesquisa em comum com professores da UEA. Espessura e cor indicam o volume de conexões. Arraste para girar, use o scroll para zoom e clique num arco para ver os detalhes.">
     <div id="flow-chart"></div>
   </div>
 </main>
@@ -59,8 +59,8 @@
 
 <script src="lib/d3.v7.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
-<script src="js/common.js?v=7"></script>
+<script src="js/common.js?v=8"></script>
 <script src="js/charts.js?v=8"></script>
-<script src="js/flowmap.js?v=7"></script>
+<script src="js/flowmap.js?v=8"></script>
 </body>
 </html>

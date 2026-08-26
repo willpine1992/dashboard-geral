@@ -11,8 +11,8 @@
   const world = await getWorld();
 
   d3.select("#topbar-stats").html(`
-    <div class="topbar__stat"><b>${fmt(institutions.length)}</b><small>Destinos</small></div>
-    <div class="topbar__stat"><b>${fmt(edges.length)}</b><small>Conexões</small></div>
+    <div class="topbar__stat" data-help="Número de instituições estrangeiras (destinos) com coordenadas resolvidas e pelo menos uma conexão com a UEA."><b>${fmt(institutions.length)}</b><small>Destinos</small></div>
+    <div class="topbar__stat" data-help="Número total de pares (pesquisador da UEA, pesquisador estrangeiro) identificados como possível parceria."><b>${fmt(edges.length)}</b><small>Conexões</small></div>
   `);
 
   const maxMatches = d3.max(institutions, (d) => d.n_matches) || 1;

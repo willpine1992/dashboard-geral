@@ -372,6 +372,25 @@ h1, h2, h3 { color: var(--ink-primary); margin: 0; font-weight: 700; letter-spac
 .viz-tooltip b { color: #bdf0d6; }
 
 /* ==========================================================================
+   Tooltip de ajuda (hover parado por 3s sobre um card/gráfico — ver
+   initHelpTooltips em common.js). Visual deliberadamente diferente do
+   .viz-tooltip acima (borda de destaque à esquerda, fundo claro) pra não
+   ser confundido com o tooltip de dados dos gráficos.
+   ========================================================================== */
+.help-tooltip {
+  position: fixed; pointer-events: none; z-index: 1000;
+  max-width: 260px;
+  background: var(--surface-panel); color: var(--ink-secondary);
+  border: 1px solid var(--border-strong); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-lift);
+  padding: 10px 13px;
+  font-family: var(--font); font-size: 12px; font-weight: 500; line-height: 1.45;
+  opacity: 0; transform: translateY(4px) scale(0.98);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.help-tooltip.is-visible { opacity: 1; transform: translateY(0) scale(1); }
+
+/* ==========================================================================
    Sankey
    ========================================================================== */
 /* altura fixa e generosa — não encolhe conforme o tamanho da tela; o que

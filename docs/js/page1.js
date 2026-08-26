@@ -48,9 +48,9 @@
 
   /* ---- topbar stats ---- */
   d3.select("#topbar-stats").html(`
-    <div class="topbar__stat"><b>${fmt(researchers.length)}</b><small>Pesquisadores</small></div>
-    <div class="topbar__stat"><b>${fmt(institutions.length)}</b><small>Instituições estrangeiras</small></div>
-    <div class="topbar__stat"><b>${fmt(edges.length)}</b><small>Conexões</small></div>
+    <div class="topbar__stat" data-help="Número de pesquisadores da UEA com pelo menos uma conexão internacional identificada."><b>${fmt(researchers.length)}</b><small>Pesquisadores</small></div>
+    <div class="topbar__stat" data-help="Número de instituições estrangeiras distintas com pelo menos um pesquisador em comum com a UEA."><b>${fmt(institutions.length)}</b><small>Instituições estrangeiras</small></div>
+    <div class="topbar__stat" data-help="Número total de pares (pesquisador da UEA, pesquisador estrangeiro) identificados como possível parceria, considerando os filtros ativos."><b>${fmt(edges.length)}</b><small>Conexões</small></div>
   `);
 
   /* ---- eventos ---- */

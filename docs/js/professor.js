@@ -59,8 +59,8 @@
   /* ---------------- coluna 1: pessoal ---------------- */
   function renderPersonal() {
     d3.select("#topbar-stats").html(`
-      <div class="topbar__stat"><b>${fmt(linhas.length)}</b><small>Linhas em comum</small></div>
-      <div class="topbar__stat"><b>${fmt(ueaProfs.length)}</b><small>Prof. UEA</small></div>
+      <div class="topbar__stat" data-help="Número de linhas de pesquisa do Lattes desses professores da UEA que casaram com as keywords do OpenAlex deste pesquisador estrangeiro."><b>${fmt(linhas.length)}</b><small>Linhas em comum</small></div>
+      <div class="topbar__stat" data-help="Número de professores da UEA conectados a este pesquisador estrangeiro."><b>${fmt(ueaProfs.length)}</b><small>Prof. UEA</small></div>
     `);
 
     d3.select("#p-avatar").style("background", colorFor(foreignName)).text(initials(foreignName));
