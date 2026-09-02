@@ -231,45 +231,21 @@
     d3.select("#prof-count-hint").text(`${fmt(currentFilteredResearchers.length)} / ${fmt(researchers.length)}`);
   }
 
-  // mapeia o conceito CAPES (3–7) para um índice na escala verde sequencial
-  // já usada no mapa de calor (charts.js) — mantém a paleta consistente e
-  // reage sozinho a troca de tema, já que GREEN_SEQUENTIAL é recalculada em
-  // refreshThemeColors() e renderPPGChecklist roda de novo a cada render().
-  const CAPES_GRADE_INDEX = { 3: 1, 4: 2, 5: 4, 6: 5, 7: 6 };
+  // número do conceito CAPES, à direita da linha — mesmo padrão de "small"
+  // à direita usado nas demais listas do painel (sem badge/círculo).
   function capesConceitoBadge(codigo) {
     const p = capesByCode.get(codigo.normalize("NFC"));
     if (!p || p.conceito == null) return "";
     const label = String(p.conceito).replace(/"/g, "&quot;");
     const nome = (p.nome || "").replace(/"/g, "&quot;");
     if (label === "A") {
-      return `<span class="capes-badge capes-badge--pending" title="Conceito CAPES ainda não atribuído (curso novo) · ${nome}">A</span>`;
+      return `<small class="ppg-grade ppg-grade--pending" title="Conceito CAPES ainda não atribuído (curso novo) · ${nome}">A</small>`;
     }
-    const idx = CAPES_GRADE_INDEX[Number(label)] ?? 3;
-    const bg = GREEN_SEQUENTIAL[idx];
-    const fg = idx >= 3 ? "#ffffff" : "var(--ink-primary)";
-    return `<span class="capes-badge" style="background:${bg};color:${fg};" title="Conceito CAPES ${label} · Avaliação Quadrienal 2021-2024 · ${nome}">${label}</span>`;
+    return `<small class="ppg-grade" title="Conceito CAPES ${label} · Avaliação Quadrienal 2021-2024 · ${nome}">${label}</small>`;
   }
 
   function renderPPGChecklist() {
-    const idsMatching = (filters.pais || filters.instituicao)
-      ? new Set(
-          edges
-            .filter((e) => !filters.pais || e.foreign_country === filters.pais)
-            .filter((e) => !filters.instituicao || e.foreign_institution === filters.instituicao)
-            .map((e) => e.researcher_id)
-        )
-      : null;
     const capesActive = filters.nivel || filters.modalidade || filters.situacao || filters.conceito;
-    const base = researchers.filter((r) => {
-      if (filters.grandeArea && !r.grande_areas.includes(filters.grandeArea)) return false;
-      if (filters.area && !r.areas.includes(filters.area)) return false;
-      if (filters.professorId && r.id !== filters.professorId) return false;
-      if (idsMatching && !idsMatching.has(r.id)) return false;
-      if (capesActive && !r.programas.some((p) => ppgMatchesCapesFilters(p, capesByCode, filters))) return false;
-      return true;
-    });
-    const counts = new Map(ALL_PPGS.map((p) => [p, 0]));
-    base.forEach((r) => r.programas.forEach((p) => counts.set(p, (counts.get(p) || 0) + 1)));
 
     const rows = d3.select("#filter-ppg-list")
       .selectAll(".checkrow")
@@ -281,7 +257,7 @@
       .classed("checkrow--dim", (d) => capesActive && !ppgMatchesCapesFilters(d, capesByCode, filters))
       .html((d) => `
         <input type="checkbox" ${filters.ppgs.has(d) ? "checked" : ""} />
-        <span>${d}</span>${capesConceitoBadge(d)}<small>${fmt(counts.get(d) || 0)}</small>`);
+        <span>${d}</span>${capesConceitoBadge(d)}`);
     rows.select("input").on("change", (_, d) => togglePPG(d));
 
     d3.select("#ppg-count-hint").text(filters.ppgs.size ? `${filters.ppgs.size} selecionado(s)` : "");

@@ -203,14 +203,14 @@ html, body {
 /* segunda barra, logo abaixo do topbar — só os cards de estatística
    (Pesquisadores / Instituições estrangeiras / Conexões etc.) */
 .statbar {
-  display: flex; align-items: center; gap: 32px;
+  display: flex; align-items: center; justify-content: center; gap: 32px;
   min-height: 40px;
   padding: 10px 28px;
   background: var(--surface-alt);
   border-bottom: 1px solid var(--border-hairline);
   position: relative; z-index: 19;
 }
-.topbar__stat { text-align: left; line-height: 1.1; }
+.topbar__stat { text-align: center; line-height: 1.1; }
 .topbar__stat b { display: block; font-size: 15px; color: var(--ink-primary); font-variant-numeric: tabular-nums; }
 .topbar__stat small { font-size: 10.5px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 
@@ -310,16 +310,10 @@ select.dropdown:focus { outline: none; border-color: var(--accent); box-shadow: 
 .checkrow small { margin-left: auto; font-size: 10.5px; color: var(--ink-muted); font-variant-numeric: tabular-nums; flex: none; }
 .checkrow--dim { opacity: 0.42; }
 
-/* selo de conceito CAPES, ao lado do nome do PPG na checklist */
-.capes-badge {
-  flex: none; display: inline-flex; align-items: center; justify-content: center;
-  min-width: 20px; height: 18px; padding: 0 5px;
-  border-radius: var(--radius-pill); font-size: 10.5px; font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-.capes-badge--pending {
-  background: var(--surface-alt); color: var(--ink-muted); border: 1px solid var(--border-hairline);
-}
+/* conceito CAPES, à direita do nome do PPG na checklist — mesmo padrão dos
+   demais números à direita nas listas (.checkrow small), sem círculo/pill */
+.ppg-grade { font-weight: 800; color: var(--ink-primary); }
+.ppg-grade--pending { color: var(--ink-muted); font-weight: 700; }
 
 /* filtros da Avaliação Quadrienal CAPES, abaixo da checklist de PPGs */
 .capes-filters {
