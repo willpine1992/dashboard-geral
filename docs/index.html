@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script>(function(){var t=localStorage.getItem('gerbras-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);})();</script>
 <title>PROPESP · Parcerias Internacionais UEA</title>
-<link rel="stylesheet" href="css/style.css?v=14" />
+<link rel="stylesheet" href="css/style.css?v=15" />
 </head>
 <body>
 
@@ -51,12 +51,39 @@
       </div>
     </div>
 
-    <div class="panel" data-help="Filtra os pesquisadores pelo Programa de Pós-Graduação (PPG) da UEA ao qual estão vinculados. O número ao lado de cada item mostra quantos pesquisadores atendem também aos demais filtros ativos.">
+    <div class="panel" data-help="Filtra os pesquisadores pelo Programa de Pós-Graduação (PPG) da UEA ao qual estão vinculados. O número ao lado de cada item mostra quantos pesquisadores atendem também aos demais filtros ativos. A nota ao lado do nome é o conceito CAPES do PPG na Avaliação Quadrienal 2021-2024.">
       <div class="panel__header">
         <span class="panel__title">Programas (PPG)</span>
         <span class="panel__hint" id="ppg-count-hint"></span>
       </div>
       <div class="checklist" id="filter-ppg-list"></div>
+
+      <div class="capes-filters" data-help="Filtra os PPGs (e, por consequência, os pesquisadores) pelos atributos cadastrados na Avaliação Quadrienal CAPES 2021-2024: nível do curso, modalidade, situação e conceito obtido.">
+        <div class="field">
+          <label>Nível</label>
+          <select id="filter-nivel" class="dropdown">
+            <option value="">Todos os níveis</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Modalidade</label>
+          <select id="filter-modalidade" class="dropdown">
+            <option value="">Todas as modalidades</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Situação</label>
+          <select id="filter-situacao" class="dropdown">
+            <option value="">Todas as situações</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Avaliação quadrienal CAPES 2021-2024</label>
+          <select id="filter-conceito" class="dropdown">
+            <option value="">Todos os conceitos</option>
+          </select>
+        </div>
+      </div>
     </div>
 
     <div class="panel panel--grow" style="height:440px;" data-help="Lista as linhas de pesquisa (keywords do Lattes) dos pesquisadores da UEA que atendem aos filtros ativos. Clique numa linha para filtrar o painel só por ela — o número ao lado é quantas conexões internacionais aquela linha tem.">
@@ -163,9 +190,9 @@
 <script src="lib/d3.v7.min.js"></script>
 <script src="lib/d3-sankey.min.js"></script>
 <script src="lib/topojson-client.min.js"></script>
-<script src="js/common.js?v=14"></script>
+<script src="js/common.js?v=16"></script>
 <script src="js/charts.js?v=13"></script>
 <script src="js/report.js?v=13"></script>
-<script src="js/page1.js?v=14"></script>
+<script src="js/page1.js?v=16"></script>
 </body>
 </html>

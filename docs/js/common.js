@@ -92,10 +92,40 @@ function initThemeToggle() {
 
 async function loadData() {
   const opts = { cache: "no-cache" }; // sempre revalida com o servidor — dados mudam a cada reexport do ETL
-  const { researchers, edges, institutions, manaus } = await fetch("../data/dashboard.json", opts).then((r) => r.json());
+  const [{ researchers, edges, institutions, manaus }, capesNotas] = await Promise.all([
+    fetch("../data/dashboard.json", opts).then((r) => r.json()),
+    fetch("../data/capes_notas.json", opts).then((r) => r.json()),
+  ]);
   const institutionByName = new Map(institutions.map((i) => [i.instituicao, i]));
   const researcherById = new Map(researchers.map((r) => [r.id, r]));
-  return { researchers, edges, institutions, manaus, institutionByName, researcherById };
+  // normaliza para NFC: o Excel de origem grava acentos como caractere
+  // pré-composto, mas o Lattes (via dashboard.json) às vezes grava a forma
+  // decomposta (base + acento combinante) — mesma string visualmente, bytes
+  // diferentes. Sem isso, códigos como "PROFÁGUA" não batem no Map.get().
+  const capesByCode = new Map(capesNotas.programas.map((p) => [p.codigo.normalize("NFC"), p]));
+  return {
+    researchers, edges, institutions, manaus, institutionByName, researcherById,
+    capesByCode, capesOpcoes: capesNotas.opcoes,
+  };
+}
+
+/* ---------- Avaliação CAPES por PPG ---------- */
+// um PPG "atende" um filtro de nível/modalidade/situação se QUALQUER um dos
+// seus cursos (ex.: Mestrado e Doutorado são cursos distintos do mesmo PPG)
+// tiver aquele valor — o conceito, por sua vez, é único por PPG.
+function ppgMatchesCapesFilters(codigo, capesByCode, filters) {
+  const p = capesByCode.get(codigo.normalize("NFC"));
+  if (!p) return !(filters.nivel || filters.modalidade || filters.situacao || filters.conceito);
+  if (filters.conceito && String(p.conceito) !== filters.conceito) return false;
+  if (filters.nivel || filters.modalidade || filters.situacao) {
+    const ok = p.cursos.some((c) =>
+      (!filters.nivel || c.nivel === filters.nivel) &&
+      (!filters.modalidade || c.modalidade === filters.modalidade) &&
+      (!filters.situacao || c.situacao === filters.situacao)
+    );
+    if (!ok) return false;
+  }
+  return true;
 }
 
 /* ---------- estado de filtros, compartilhado via querystring ---------- */
@@ -110,6 +140,10 @@ function readFiltersFromURL() {
     instituicao: p.get("instituicao") || "",
     professorId: p.get("professor") ? Number(p.get("professor")) : null,
     q: p.get("q") || "",
+    nivel: p.get("nivel") || "",
+    modalidade: p.get("modalidade") || "",
+    situacao: p.get("situacao") || "",
+    conceito: p.get("conceito") || "",
   };
 }
 
@@ -123,15 +157,21 @@ function filtersToURL(filters) {
   if (filters.instituicao) p.set("instituicao", filters.instituicao);
   if (filters.professorId) p.set("professor", filters.professorId);
   if (filters.q) p.set("q", filters.q);
+  if (filters.nivel) p.set("nivel", filters.nivel);
+  if (filters.modalidade) p.set("modalidade", filters.modalidade);
+  if (filters.situacao) p.set("situacao", filters.situacao);
+  if (filters.conceito) p.set("conceito", filters.conceito);
   return p.toString();
 }
 
-function applyResearcherFilters(researchers, filters) {
+function applyResearcherFilters(researchers, filters, capesByCode) {
+  const capesActive = capesByCode && (filters.nivel || filters.modalidade || filters.situacao || filters.conceito);
   return researchers.filter((r) => {
     if (filters.grandeArea && !r.grande_areas.includes(filters.grandeArea)) return false;
     if (filters.area && !r.areas.includes(filters.area)) return false;
     if (filters.ppgs.size && !r.programas.some((p) => filters.ppgs.has(p))) return false;
     if (filters.professorId && r.id !== filters.professorId) return false;
+    if (capesActive && !r.programas.some((p) => ppgMatchesCapesFilters(p, capesByCode, filters))) return false;
     return true;
   });
 }

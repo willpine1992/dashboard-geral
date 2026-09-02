@@ -1,0 +1,518 @@
+{
+  "programas": [
+    {
+      "codigo": "Rede BIONORTE",
+      "sigla": "Rede BIONORTE",
+      "nome": "Programa de Pós-Graduação em Biodiversidade e Biotecnologia - Rede BIONORTE",
+      "uniVinculo": "ESA",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Biodiversidade e Biotecnologia",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PMBqBM",
+      "sigla": "PPG PMBqBM",
+      "nome": "Programa Multicêntrico Pós Graduação em Bioquímica e Biologia Molecular - PPG PMBqBM",
+      "uniVinculo": "ESA",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Bioquímica e Biologia Molecular",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Rede"
+        },
+        {
+          "curso": "Bioquímica e Biologia Molecular",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGMBT",
+      "sigla": "PPGMBT",
+      "nome": "Programa de Pós-Graduação em Biotecnologia e Recursos Naturais da Amazônia - PPGMBT",
+      "uniVinculo": "ESA",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Biotecnologia e Recursos Naturais",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGCAD",
+      "sigla": "PPGCAD",
+      "nome": "Programa de Pós-Graduação em Ciências Aplicadas à Dermatologia - PPGCAD",
+      "uniVinculo": "ESA",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Ciências Aplicadas à Dermatologia",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGH",
+      "sigla": "PPGH",
+      "nome": "Programa de Pós-Graduação em Ciências Aplicadas à Hematologia - PPGH",
+      "uniVinculo": "ESA",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Ciências Aplicadas à Hematologia",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGICH",
+      "sigla": "PPGICH",
+      "nome": "Programa de Pós-Graduação Interdisciplinar em Ciências Humanas - PPGICH",
+      "uniVinculo": "ESAT    CEST",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Ciências Humanas",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "CLIAMB",
+      "sigla": "PPG CLIAMB",
+      "nome": "Programa de Pós-Graduação em Clima e Ambiente  - PPG CLIAMB",
+      "uniVinculo": "EST",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Clima e Ambiente",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Associação"
+        },
+        {
+          "curso": "Clima e Ambiente",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Associação"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGDA",
+      "sigla": "PPGDA",
+      "nome": "Programa de Pós-Graduação em Direito Ambiental - PPGDA",
+      "uniVinculo": "ED",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Direito Ambiental",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        },
+        {
+          "curso": "Direito Ambiental",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGED",
+      "sigla": "PPGED",
+      "nome": "Programa de Pós-Graduação em Educação - PPGED",
+      "uniVinculo": "ENS       CEST",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Educação",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "Rede REAMEC",
+      "sigla": "Rede REAMEC",
+      "nome": "Programa de Pós-Graduação em Educação em Ciências e Matemática - Rede REAMEC",
+      "uniVinculo": "ENS",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Educação em Ciências e Matemática",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGEEC",
+      "sigla": "PPGEEC",
+      "nome": "Programa de Pós-Graduação em Educação e Ensino de Ciências na Amazônia - PPGEEC",
+      "uniVinculo": "ENS",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Educação em Ciências na Amazônia",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        },
+        {
+          "curso": "Educação em Ciências na Amazônia",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "Rede EDUCANORTE",
+      "sigla": "Rede EDUCANORTE",
+      "nome": "Programa de Pós-Graduação em Educação na Amazônia - Rede EDUCANORTE",
+      "uniVinculo": "ENS",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Educação na Amazônia",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPG PROENSP",
+      "sigla": "PPG PROENSP",
+      "nome": "Programa de Pós-Graduação em Enfermagem em Saúde Pública - PPG PROENSP",
+      "uniVinculo": "ESA",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Enfermagem em Saúde Pública",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        },
+        {
+          "curso": "Enfermagem em Saúde Pública",
+          "nivel": "Doutorado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFÁGUA",
+      "sigla": "Rede PROFÁGUA",
+      "nome": "Programa de Pós-Graduação em Gestão e Regulação de Recursos Hídricos - Rede PROFÁGUA",
+      "uniVinculo": "ENS       CESP",
+      "conceito": 3,
+      "cursos": [
+        {
+          "curso": "Gestão e Regulação de Recursos Hídricos",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGLA",
+      "sigla": "PPGLA",
+      "nome": "Programa de Pós-Graduação em Letras e Artes - PPGLA",
+      "uniVinculo": "ESAT",
+      "conceito": 5,
+      "cursos": [
+        {
+          "curso": "Letras e Artes",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        },
+        {
+          "curso": "Letras e Artes",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "Rede PROFMAT",
+      "sigla": "Rede PROFMAT",
+      "nome": "Programa de Pós-Graduação em Matemática - Rede PROFMAT",
+      "uniVinculo": "ENS",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Matemática",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGMT",
+      "sigla": "PPGMT",
+      "nome": "Programa de Pós-Graduação em Medicina Tropical - PPGMT",
+      "uniVinculo": "ESA",
+      "conceito": 7,
+      "cursos": [
+        {
+          "curso": "Doenças Tropicais e Infecciosas",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        },
+        {
+          "curso": "Doenças Tropicais e Infecciosas",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFNIT",
+      "sigla": "Rede PROFNIT",
+      "nome": "Programa de Pós-Graduação em Propriedade Intelectual e Transferência de Tecnologia para a Inovação - Rede PROFNIT",
+      "uniVinculo": "EST",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Propriedade Intelectual e Transferência de Tecnologia para a Inovação",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGSC",
+      "sigla": "PPGSC",
+      "nome": "Programa de Pós-Graduação em Saúde Coletiva - PPGSC",
+      "uniVinculo": "ESA",
+      "conceito": 3,
+      "cursos": [
+        {
+          "curso": "Saúde Coletiva",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPG DASPAM",
+      "sigla": "PPG DASPAM",
+      "nome": "Programa de Pós-Graduação em Saúde Pública na Amazônia - PPG DASPAM",
+      "uniVinculo": "ESA",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Saúde Pública na Amazônia",
+          "nivel": "Doutorado",
+          "modalidade": "Acadêmico",
+          "situacao": "Associação"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFSAÚDE",
+      "sigla": "PROFSAÚDE",
+      "nome": "Programa de Pós-Graduação em Saúde Coletiva  - PROFSAÚDE",
+      "uniVinculo": "ESA",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Saúde da Família",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGSP",
+      "sigla": "PPGSP",
+      "nome": "Programa de Pós-Graduação em Segurança Pública, Cidadania e Direitos Humanos - PPGSP",
+      "uniVinculo": "ESO",
+      "conceito": 4,
+      "cursos": [
+        {
+          "curso": "Segurança Pública, Cidadania e Direitos Humanos",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPPGMUS",
+      "sigla": "PPPGMUS",
+      "nome": "Programa de Pós-Graduação em Música - PPPGMUS",
+      "uniVinculo": "ESAT",
+      "conceito": "A",
+      "cursos": [
+        {
+          "curso": "Música",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGEEL",
+      "sigla": "PPGEEL",
+      "nome": "Programa de Pós-Graduação em Engenharia Elétrica - PPGEEL",
+      "uniVinculo": "EST",
+      "conceito": 3,
+      "cursos": [
+        {
+          "curso": "Engenharia Elétrica",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGEO",
+      "sigla": "PPGEO",
+      "nome": "Programa de Pós-Graduação em Geografia - PPGEO",
+      "uniVinculo": "ENS",
+      "conceito": 3,
+      "cursos": [
+        {
+          "curso": "Geografia",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGBEC",
+      "sigla": "PPGBEC",
+      "nome": "Programa de Pós-Graduação Biodiversidade e Ensino de Ciências Naturais na Amazônia - PPGBEC",
+      "uniVinculo": "ENS    CESTB",
+      "conceito": "A",
+      "cursos": [
+        {
+          "curso": "Biodiversidade e Ensino de Ciências Naturais na Amazônia",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Associação"
+        }
+      ]
+    },
+    {
+      "codigo": "PPGCSA",
+      "sigla": "PPGCSA",
+      "nome": "Programa de Pós-Graduação em Ciências da Saúde na Amazônia - PPGCSA",
+      "uniVinculo": "ESA",
+      "conceito": "A",
+      "cursos": [
+        {
+          "curso": "Ciências da Saúde na Amazônia",
+          "nivel": "Mestrado",
+          "modalidade": "Acadêmico",
+          "situacao": "Próprio"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFEDUCATEC",
+      "sigla": "PROFEDUCATEC",
+      "nome": "Programa de Pós-Graduação em Processos e Tecnologias Educacionais - PROFEDUCATEC",
+      "uniVinculo": "CESTB   CESP    CESIT",
+      "conceito": "A",
+      "cursos": [
+        {
+          "curso": "Processos e Tecnologias Educacionais em Rede Nacional",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFCOMP",
+      "sigla": "PROFCOMP",
+      "nome": "Mestrado em Ensino de Computação em Rede - PROFCOMP",
+      "uniVinculo": "CESIT",
+      "conceito": "A",
+      "cursos": [
+        {
+          "curso": "Ensino de Computação em Rede",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    },
+    {
+      "codigo": "PROFARTES",
+      "sigla": "PROFARTES",
+      "nome": "Programa de Pós-Graduação em Artes - PROFARTES",
+      "uniVinculo": "UFAM",
+      "conceito": 3,
+      "cursos": [
+        {
+          "curso": "Artes",
+          "nivel": "Mestrado",
+          "modalidade": "Profissional",
+          "situacao": "Rede"
+        }
+      ]
+    }
+  ],
+  "opcoes": {
+    "niveis": [
+      "Doutorado",
+      "Mestrado"
+    ],
+    "modalidades": [
+      "Acadêmico",
+      "Profissional"
+    ],
+    "situacoes": [
+      "Associação",
+      "Próprio",
+      "Rede"
+    ],
+    "conceitos": [
+      3,
+      4,
+      5,
+      7,
+      "A"
+    ]
+  }
+}

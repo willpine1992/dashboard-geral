@@ -2,7 +2,7 @@
    GERBRAS Dashboard — Página 1: orquestração de filtros e gráficos
    ========================================================================== */
 (async function () {
-  const { researchers, edges, institutions, manaus, researcherById } = await loadData();
+  const { researchers, edges, institutions, manaus, researcherById, capesByCode, capesOpcoes } = await loadData();
 
   let filters = readFiltersFromURL();
   let profSearchText = filters.q || "";
@@ -45,6 +45,10 @@
   populateSelect("#filter-grande-area", ALL_GRANDE_AREAS, filters.grandeArea);
   populateSelect("#filter-area", areaOptionsFor(filters.grandeArea), filters.area);
   populateSelect("#filter-pais", ALL_PAISES, filters.pais);
+  populateSelect("#filter-nivel", capesOpcoes.niveis, filters.nivel);
+  populateSelect("#filter-modalidade", capesOpcoes.modalidades, filters.modalidade);
+  populateSelect("#filter-situacao", capesOpcoes.situacoes, filters.situacao);
+  populateSelect("#filter-conceito", capesOpcoes.conceitos.map(String), filters.conceito);
 
   /* ---- topbar stats ---- */
   d3.select("#topbar-stats").html(`
@@ -80,13 +84,36 @@
     profSearchText = ev.target.value;
     renderProfessorList();
   }, 120));
+  d3.select("#filter-nivel").on("change", function () {
+    filters.nivel = this.value;
+    syncURL(); render();
+  });
+  d3.select("#filter-modalidade").on("change", function () {
+    filters.modalidade = this.value;
+    syncURL(); render();
+  });
+  d3.select("#filter-situacao").on("change", function () {
+    filters.situacao = this.value;
+    syncURL(); render();
+  });
+  d3.select("#filter-conceito").on("change", function () {
+    filters.conceito = this.value;
+    syncURL(); render();
+  });
   d3.select("#btn-clear-filters").on("click", () => {
-    filters = { grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), pais: "", instituicao: "", professorId: null, q: "" };
+    filters = {
+      grandeArea: "", area: "", ppgs: new Set(), linhas: new Set(), pais: "", instituicao: "", professorId: null, q: "",
+      nivel: "", modalidade: "", situacao: "", conceito: "",
+    };
     profSearchText = "";
     d3.select("#prof-search").property("value", "");
     populateSelect("#filter-grande-area", ALL_GRANDE_AREAS, "");
     populateSelect("#filter-area", areaOptionsFor(""), "");
     populateSelect("#filter-pais", ALL_PAISES, "");
+    populateSelect("#filter-nivel", capesOpcoes.niveis, "");
+    populateSelect("#filter-modalidade", capesOpcoes.modalidades, "");
+    populateSelect("#filter-situacao", capesOpcoes.situacoes, "");
+    populateSelect("#filter-conceito", capesOpcoes.conceitos.map(String), "");
     syncURL(); render();
   });
   d3.select("#btn-report").on("click", () => {
@@ -153,7 +180,7 @@
   let currentEdgesForReport = [];
 
   function render() {
-    currentFilteredResearchers = applyResearcherFilters(researchers, filters);
+    currentFilteredResearchers = applyResearcherFilters(researchers, filters, capesByCode);
     let filteredIds = new Set(currentFilteredResearchers.map((r) => r.id));
 
     // país/instituição não são atributos diretos do pesquisador — filtrar a
@@ -204,6 +231,25 @@
     d3.select("#prof-count-hint").text(`${fmt(currentFilteredResearchers.length)} / ${fmt(researchers.length)}`);
   }
 
+  // mapeia o conceito CAPES (3–7) para um índice na escala verde sequencial
+  // já usada no mapa de calor (charts.js) — mantém a paleta consistente e
+  // reage sozinho a troca de tema, já que GREEN_SEQUENTIAL é recalculada em
+  // refreshThemeColors() e renderPPGChecklist roda de novo a cada render().
+  const CAPES_GRADE_INDEX = { 3: 1, 4: 2, 5: 4, 6: 5, 7: 6 };
+  function capesConceitoBadge(codigo) {
+    const p = capesByCode.get(codigo.normalize("NFC"));
+    if (!p || p.conceito == null) return "";
+    const label = String(p.conceito).replace(/"/g, "&quot;");
+    const nome = (p.nome || "").replace(/"/g, "&quot;");
+    if (label === "A") {
+      return `<span class="capes-badge capes-badge--pending" title="Conceito CAPES ainda não atribuído (curso novo) · ${nome}">A</span>`;
+    }
+    const idx = CAPES_GRADE_INDEX[Number(label)] ?? 3;
+    const bg = GREEN_SEQUENTIAL[idx];
+    const fg = idx >= 3 ? "#ffffff" : "var(--ink-primary)";
+    return `<span class="capes-badge" style="background:${bg};color:${fg};" title="Conceito CAPES ${label} · Avaliação Quadrienal 2021-2024 · ${nome}">${label}</span>`;
+  }
+
   function renderPPGChecklist() {
     const idsMatching = (filters.pais || filters.instituicao)
       ? new Set(
@@ -213,11 +259,13 @@
             .map((e) => e.researcher_id)
         )
       : null;
+    const capesActive = filters.nivel || filters.modalidade || filters.situacao || filters.conceito;
     const base = researchers.filter((r) => {
       if (filters.grandeArea && !r.grande_areas.includes(filters.grandeArea)) return false;
       if (filters.area && !r.areas.includes(filters.area)) return false;
       if (filters.professorId && r.id !== filters.professorId) return false;
       if (idsMatching && !idsMatching.has(r.id)) return false;
+      if (capesActive && !r.programas.some((p) => ppgMatchesCapesFilters(p, capesByCode, filters))) return false;
       return true;
     });
     const counts = new Map(ALL_PPGS.map((p) => [p, 0]));
@@ -229,9 +277,11 @@
       .join("label")
       .attr("class", "checkrow");
 
-    rows.html((d) => `
-      <input type="checkbox" ${filters.ppgs.has(d) ? "checked" : ""} />
-      <span>${d}</span><small>${fmt(counts.get(d) || 0)}</small>`);
+    rows
+      .classed("checkrow--dim", (d) => capesActive && !ppgMatchesCapesFilters(d, capesByCode, filters))
+      .html((d) => `
+        <input type="checkbox" ${filters.ppgs.has(d) ? "checked" : ""} />
+        <span>${d}</span>${capesConceitoBadge(d)}<small>${fmt(counts.get(d) || 0)}</small>`);
     rows.select("input").on("change", (_, d) => togglePPG(d));
 
     d3.select("#ppg-count-hint").text(filters.ppgs.size ? `${filters.ppgs.size} selecionado(s)` : "");
