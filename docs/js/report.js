@@ -7,8 +7,9 @@
    diálogo de impressão do navegador. Não depende de libs externas.
    ========================================================================== */
 
-const REPORT_DETAIL_THRESHOLD = 300; // acima disso, a lista pessoa-a-pessoa vira "refine os filtros"
 const REPORT_MAX_INSTITUTION_ROWS = 60;
+const REPORT_MAX_LINHAS_PER_INSTITUTION = 6; // "principais" linhas de pesquisa — não a lista inteira
+const REPORT_MAX_FOREIGN_PER_LINHA = 15;
 
 function reportEsc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => (
@@ -52,10 +53,9 @@ function aggregateForReport(researchers, edges, institutions) {
   const researcherIds = new Set(researchers.map((r) => r.id));
 
   const byCountry = new Map(); // pais -> { instituicoes:Set, pesquisadoresUEA:Set, conexoes:number }
-  const byInstitution = new Map(); // instituicao -> { pais, uea:Set, estrangeiros:Set, conexoes:number, keywords:Map }
+  const byInstitution = new Map(); // instituicao -> { pais, uea:Set, estrangeiros:Set, conexoes:number }
   const byKeyword = new Map(); // keyword -> conexoes
   const byForeignResearcher = new Map(); // orcid|nome -> { nome, instituicao, pais, conexoes }
-  const byResearcherDetail = new Map(); // researcher_id -> [ edges... ]
 
   for (const e of edges) {
     if (!researcherIds.has(e.researcher_id)) continue;
@@ -70,14 +70,13 @@ function aggregateForReport(researchers, edges, institutions) {
 
     if (!byInstitution.has(e.foreign_institution)) {
       byInstitution.set(e.foreign_institution, {
-        pais: e.foreign_country, uea: new Set(), estrangeiros: new Set(), conexoes: 0, keywords: new Map(),
+        pais: e.foreign_country, uea: new Set(), estrangeiros: new Set(), conexoes: 0,
       });
     }
     const inst = byInstitution.get(e.foreign_institution);
     inst.uea.add(e.researcher_id);
     inst.estrangeiros.add(e.foreign_author_orcid || e.foreign_author_name);
     inst.conexoes += 1;
-    inst.keywords.set(e.keyword, (inst.keywords.get(e.keyword) || 0) + 1);
 
     if (e.linha_real) byKeyword.set(e.keyword, (byKeyword.get(e.keyword) || 0) + 1);
 
@@ -88,12 +87,97 @@ function aggregateForReport(researchers, edges, institutions) {
       });
     }
     byForeignResearcher.get(fKey).conexoes += 1;
-
-    if (!byResearcherDetail.has(e.researcher_id)) byResearcherDetail.set(e.researcher_id, []);
-    byResearcherDetail.get(e.researcher_id).push(e);
   }
 
-  return { byCountry, byInstitution, byKeyword, byForeignResearcher, byResearcherDetail };
+  return { byCountry, byInstitution, byKeyword, byForeignResearcher };
+}
+
+/* ---------- hierarquia Instituição estrangeira > Linha de pesquisa > Pesquisadores estrangeiros ----------
+   Nível 1: cada instituição estrangeira. Nível 2: as linhas de pesquisa da UEA que deram match
+   com aquela instituição (rotuladas pela keyword — quando nenhum match da linha é "real"
+   /confirmado no Lattes, ela carrega a tag "match por palavra-chave"). Nível 3: os pesquisadores
+   ESTRANGEIROS daquela instituição conectados àquela linha (o contato a prospectar) — cada chip
+   traz, no title, os professores da UEA que geraram aquele match. */
+function aggregateInstitutionHierarchy(researchers, edges) {
+  const researcherIds = new Set(researchers.map((r) => r.id));
+  const byInst = new Map(); // instituicao -> { pais, uea:Set, estrangeiros:Set, conexoes, linhas:Map }
+
+  for (const e of edges) {
+    if (!researcherIds.has(e.researcher_id)) continue;
+
+    if (!byInst.has(e.foreign_institution)) {
+      byInst.set(e.foreign_institution, {
+        pais: e.foreign_country, uea: new Set(), estrangeiros: new Set(), conexoes: 0, linhas: new Map(),
+      });
+    }
+    const inst = byInst.get(e.foreign_institution);
+    inst.uea.add(e.researcher_id);
+    inst.estrangeiros.add(e.foreign_author_orcid || e.foreign_author_name);
+    inst.conexoes += 1;
+
+    if (!inst.linhas.has(e.keyword)) inst.linhas.set(e.keyword, { conexoes: 0, real: false, estrangeiros: new Map() });
+    const linha = inst.linhas.get(e.keyword);
+    linha.conexoes += 1;
+    if (e.linha_real) linha.real = true;
+
+    const fKey = e.foreign_author_orcid || e.foreign_author_name;
+    if (!linha.estrangeiros.has(fKey)) {
+      linha.estrangeiros.set(fKey, { nome: e.foreign_author_name, conexoes: 0, ueaProfs: new Set() });
+    }
+    const fEntry = linha.estrangeiros.get(fKey);
+    fEntry.conexoes += 1;
+    fEntry.ueaProfs.add(e.researcher_id);
+  }
+
+  return byInst;
+}
+
+function buildInstitutionHierarchySection(researchers, edges, researcherById) {
+  const byInst = aggregateInstitutionHierarchy(researchers, edges);
+  const instEntries = [...byInst.entries()].sort((a, b) => b[1].conexoes - a[1].conexoes);
+  const instTruncated = instEntries.length > REPORT_MAX_INSTITUTION_ROWS;
+
+  const blocks = instEntries.slice(0, REPORT_MAX_INSTITUTION_ROWS).map(([instName, inst]) => {
+    // linhas confirmadas no Lattes (real) vêm antes das de match só por palavra-chave,
+    // e dentro de cada grupo, as com mais conexões primeiro
+    const linhaEntries = [...inst.linhas.entries()].sort((a, b) =>
+      (b[1].real - a[1].real) || (b[1].conexoes - a[1].conexoes)
+    );
+    const linhasTruncated = linhaEntries.length > REPORT_MAX_LINHAS_PER_INSTITUTION;
+
+    const linhaBlocks = linhaEntries.slice(0, REPORT_MAX_LINHAS_PER_INSTITUTION).map(([kw, linha]) => {
+      const foreignEntries = [...linha.estrangeiros.values()]
+        .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
+      const foreignTruncated = foreignEntries.length > REPORT_MAX_FOREIGN_PER_LINHA;
+      const foreignChips = foreignEntries.slice(0, REPORT_MAX_FOREIGN_PER_LINHA).map((f) => {
+        const ueaNames = [...f.ueaProfs].map((rid) => researcherById.get(rid)?.nome).filter(Boolean).join(", ");
+        return `<span class="chip" title="Conecta com: ${reportEsc(ueaNames)}">${reportEsc(f.nome)}</span>`;
+      }).join("");
+
+      return `
+        <div class="linha-block">
+          <h4>${reportEsc(kw)}${linha.real ? "" : ' <span class="tag">match por palavra-chave</span>'}</h4>
+          <div class="prof-chips">${foreignChips || '<span class="report-note">Nenhum pesquisador identificado.</span>'}</div>
+          ${foreignTruncated ? `<p class="truncate-note">+${reportFmt(foreignEntries.length - REPORT_MAX_FOREIGN_PER_LINHA)} pesquisador(es) não exibido(s).</p>` : ""}
+        </div>`;
+    }).join("");
+
+    return `
+      <div class="inst-block">
+        <h3>${reportEsc(instName)}</h3>
+        <div class="inst-meta">${reportEsc(inst.pais)} · ${reportFmt(inst.uea.size)} pesquisador(es) UEA · ${reportFmt(inst.estrangeiros.size)} pesquisador(es) estrangeiro(s) · ${reportFmt(inst.conexoes)} conexões</div>
+        ${linhaBlocks}
+        ${linhasTruncated ? `<p class="truncate-note">+${reportFmt(linhaEntries.length - REPORT_MAX_LINHAS_PER_INSTITUTION)} linha(s) de pesquisa não exibida(s).</p>` : ""}
+      </div>`;
+  }).join("");
+
+  return `
+    <section class="report-section">
+      <h2>Instituições estrangeiras</h2>
+      <p class="report-note">Organizado por instituição estrangeira; dentro de cada uma, as principais linhas de pesquisa da UEA que deram match, e os pesquisadores estrangeiros daquela instituição conectados a cada linha (passe o mouse sobre o nome para ver qual professor da UEA gerou o match).</p>
+      ${blocks || `<p class="report-note">Sem dados para os filtros atuais.</p>`}
+      ${instTruncated ? `<p class="truncate-note">Mostrando as ${REPORT_MAX_INSTITUTION_ROWS} instituições com mais conexões, de ${reportFmt(instEntries.length)} no total.</p>` : ""}
+    </section>`;
 }
 
 /* ---------- montagem do HTML ---------- */
@@ -122,21 +206,6 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
     .map(([kw, n]) => `
       <tr><td>${reportEsc(kw)}</td><td class="num">${reportFmt(n)}</td></tr>`).join("");
 
-  const institutionEntries = [...agg.byInstitution.entries()].sort((a, b) => b[1].conexoes - a[1].conexoes);
-  const institutionRowsTruncated = institutionEntries.length > REPORT_MAX_INSTITUTION_ROWS;
-  const institutionRows = institutionEntries.slice(0, REPORT_MAX_INSTITUTION_ROWS).map(([inst, v]) => {
-    const topKw = [...v.keywords.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k).join(", ");
-    return `
-      <tr>
-        <td>${reportEsc(inst)}</td>
-        <td>${reportEsc(v.pais)}</td>
-        <td class="num">${reportFmt(v.uea.size)}</td>
-        <td class="num">${reportFmt(v.estrangeiros.size)}</td>
-        <td class="num">${reportFmt(v.conexoes)}</td>
-        <td>${reportEsc(topKw)}</td>
-      </tr>`;
-  }).join("");
-
   const foreignRankedRows = [...agg.byForeignResearcher.values()]
     .sort((a, b) => b.conexoes - a.conexoes)
     .slice(0, 20)
@@ -149,47 +218,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
         <td class="num">${reportFmt(f.conexoes)}</td>
       </tr>`).join("");
 
-  const showDetail = edges.length <= REPORT_DETAIL_THRESHOLD;
-  let detailSection = "";
-  if (showDetail) {
-    const profBlocks = [...agg.byResearcherDetail.entries()]
-      .map(([rid, list]) => ({ prof: researcherById.get(rid), list }))
-      .filter((x) => x.prof)
-      .sort((a, b) => a.prof.nome.localeCompare(b.prof.nome, "pt-BR"))
-      .map(({ prof, list }) => {
-        const rows = list
-          .sort((a, b) => (b.linha_real === a.linha_real ? 0 : b.linha_real ? 1 : -1))
-          .map((e) => `
-            <tr>
-              <td>${reportEsc(e.foreign_author_name)}</td>
-              <td>${reportEsc(e.foreign_institution)} · ${reportEsc(e.foreign_country)}</td>
-              <td>${reportEsc(e.keyword)}${e.linha_real ? "" : ' <span class="tag">match por palavra-chave</span>'}</td>
-              <td>${e.sample_work_title ? `<span title="${reportEsc(e.sample_work_doi || "")}">${reportEsc(e.sample_work_title)}</span>` : "—"}</td>
-            </tr>`).join("");
-        return `
-          <div class="prof-block">
-            <h4>${reportEsc(prof.nome)} <small>${reportEsc(prof.programas.join(", "))}</small></h4>
-            <table class="report-table report-table--compact">
-              <thead><tr><th>Pesquisador estrangeiro</th><th>Instituição / País</th><th>Linha / palavra-chave</th><th>Publicação de referência</th></tr></thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </div>`;
-      }).join("");
-
-    detailSection = `
-      <section class="report-section">
-        <h2>Lista detalhada de oportunidades de contato</h2>
-        <p class="report-note">Agrupada por professor(a) da UEA. "Match por palavra-chave" indica correspondência via tradução/keyword do OpenAlex, sem confirmação direta na linha de pesquisa cadastrada no Lattes.</p>
-        ${profBlocks}
-      </section>`;
-  } else {
-    detailSection = `
-      <section class="report-section">
-        <h2>Lista detalhada de oportunidades de contato</h2>
-        <p class="report-note">Este recorte tem ${reportFmt(edges.length)} conexões — grande demais para listar pessoa a pessoa.
-        Refine os filtros no painel (país, instituição, PPG ou um professor específico) e gere o relatório novamente para obter a lista de contato detalhada.</p>
-      </section>`;
-  }
+  const institutionHierarchySection = buildInstitutionHierarchySection(researchers, edges, researcherById);
 
   return `<!doctype html>
 <html lang="pt-BR">
@@ -229,10 +258,19 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   table.report-table th { color: var(--ink-muted); font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; }
   table.report-table td.num, table.report-table th.num { text-align: right; }
   table.report-table--compact td, table.report-table--compact th { padding: 4px 6px; font-size: 11.5px; }
-  .prof-block { break-inside: avoid; margin-bottom: 12px; }
   .tag { display: inline-block; font-size: 9.5px; color: var(--ink-muted); background: var(--wash); border: 1px solid var(--border);
     border-radius: 999px; padding: 1px 6px; margin-left: 4px; }
   .truncate-note { font-size: 11px; color: var(--ink-muted); margin-top: 6px; }
+  /* hierarquia nível 1/2/3: Instituição estrangeira > Linha de pesquisa > Professores UEA */
+  .inst-block { break-inside: avoid; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+  .inst-block:last-child { border-bottom: none; }
+  .inst-block h3 { color: var(--ink-primary); font-size: 14px; margin: 0 0 3px; }
+  .inst-block .inst-meta { font-size: 11px; color: var(--ink-muted); margin-bottom: 10px; }
+  .linha-block { break-inside: avoid; margin: 0 0 10px 16px; }
+  .linha-block h4 { font-size: 12px; color: var(--ink-secondary); margin: 0 0 5px; font-weight: 700; }
+  .prof-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .prof-chips .chip { display: inline-block; font-size: 11px; color: var(--ink-primary); background: var(--wash);
+    border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
   .report-footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 10.5px; color: var(--ink-muted); }
   .print-bar { position: sticky; top: 0; background: #fff; padding: 10px 0 16px; display: flex; justify-content: flex-end; gap: 8px; }
   .print-bar button { font: inherit; font-size: 13px; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-strong);
@@ -241,7 +279,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   @media print {
     .print-bar { display: none; }
     body { padding: 0 6mm; max-width: none; }
-    .prof-block { page-break-inside: avoid; }
+    .inst-block, .linha-block { page-break-inside: avoid; }
     @page { margin: 14mm; }
   }
 </style>
@@ -289,15 +327,6 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
 </section>
 
 <section class="report-section">
-  <h2>Instituições estrangeiras</h2>
-  <table class="report-table">
-    <thead><tr><th>Instituição</th><th>País</th><th class="num">UEA</th><th class="num">Estrangeiros</th><th class="num">Conexões</th><th>Principais linhas</th></tr></thead>
-    <tbody>${institutionRows || `<tr><td colspan="6">Sem dados para os filtros atuais.</td></tr>`}</tbody>
-  </table>
-  ${institutionRowsTruncated ? `<p class="truncate-note">Mostrando as ${REPORT_MAX_INSTITUTION_ROWS} instituições com mais conexões, de ${reportFmt(institutionEntries.length)} no total.</p>` : ""}
-</section>
-
-<section class="report-section">
   <h2>Pesquisadores estrangeiros mais conectados</h2>
   <table class="report-table">
     <thead><tr><th class="num">#</th><th>Nome</th><th>Instituição</th><th>País</th><th class="num">Conexões</th></tr></thead>
@@ -305,7 +334,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   </table>
 </section>
 
-${detailSection}
+${institutionHierarchySection}
 
 <div class="report-footer">
   Gerado automaticamente pelo Painel de Parcerias Internacionais — PROPESP/UEA. Fonte dos matches: OpenAlex (publicações) + Currículo Lattes (linhas de pesquisa), ranqueados por similaridade semântica (Sentence-BERT).
