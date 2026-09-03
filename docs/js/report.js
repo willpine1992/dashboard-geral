@@ -7,11 +7,6 @@
    diálogo de impressão do navegador. Não depende de libs externas.
    ========================================================================== */
 
-const REPORT_MAX_INSTITUTION_ROWS = 60;
-const REPORT_MAX_LINHAS_PER_INSTITUTION = 6; // "principais" linhas de pesquisa — não a lista inteira
-const REPORT_MAX_FOREIGN_PER_LINHA = 15;
-const REPORT_MAX_LINHAS_PER_PPG = 10;
-
 function reportEsc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => (
     { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
@@ -42,9 +37,7 @@ function describeReportFilters(filters, researcherById) {
     chips.push(`Professor: ${prof ? prof.nome : "#" + filters.professorId}`);
   }
   if (filters.linhas.size) {
-    const arr = [...filters.linhas];
-    const shown = arr.slice(0, 6).join(", ");
-    chips.push(`Linhas de pesquisa: ${shown}${arr.length > 6 ? ` (+${arr.length - 6})` : ""}`);
+    chips.push(`Linhas de pesquisa: ${[...filters.linhas].join(", ")}`);
   }
   return chips;
 }
@@ -118,8 +111,7 @@ function buildLinhasByPPGSection(researchers, edges) {
 
   const blocks = ppgEntries.map(([ppg, keywordMap]) => {
     const kwEntries = [...keywordMap.entries()].sort((a, b) => b[1] - a[1]);
-    const truncated = kwEntries.length > REPORT_MAX_LINHAS_PER_PPG;
-    const rows = kwEntries.slice(0, REPORT_MAX_LINHAS_PER_PPG)
+    const rows = kwEntries
       .map(([kw, n]) => `<tr><td>${reportEsc(kw)}</td><td class="num">${reportFmt(n)}</td></tr>`).join("");
 
     return `
@@ -129,7 +121,6 @@ function buildLinhasByPPGSection(researchers, edges) {
           <thead><tr><th>Linha de pesquisa</th><th class="num">Conexões</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-        ${truncated ? `<p class="truncate-note">+${reportFmt(kwEntries.length - REPORT_MAX_LINHAS_PER_PPG)} linha(s) não exibida(s).</p>` : ""}
       </div>`;
   }).join("");
 
@@ -185,21 +176,18 @@ function aggregateInstitutionHierarchy(researchers, edges) {
 function buildInstitutionHierarchySection(researchers, edges, researcherById) {
   const byInst = aggregateInstitutionHierarchy(researchers, edges);
   const instEntries = [...byInst.entries()].sort((a, b) => b[1].conexoes - a[1].conexoes);
-  const instTruncated = instEntries.length > REPORT_MAX_INSTITUTION_ROWS;
 
-  const blocks = instEntries.slice(0, REPORT_MAX_INSTITUTION_ROWS).map(([instName, inst]) => {
+  const blocks = instEntries.map(([instName, inst]) => {
     // linhas confirmadas no Lattes (real) vêm antes das de match só por palavra-chave,
     // e dentro de cada grupo, as com mais conexões primeiro
     const linhaEntries = [...inst.linhas.entries()].sort((a, b) =>
       (b[1].real - a[1].real) || (b[1].conexoes - a[1].conexoes)
     );
-    const linhasTruncated = linhaEntries.length > REPORT_MAX_LINHAS_PER_INSTITUTION;
 
-    const linhaBlocks = linhaEntries.slice(0, REPORT_MAX_LINHAS_PER_INSTITUTION).map(([kw, linha]) => {
+    const linhaBlocks = linhaEntries.map(([kw, linha]) => {
       const foreignEntries = [...linha.estrangeiros.values()]
         .sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR"));
-      const foreignTruncated = foreignEntries.length > REPORT_MAX_FOREIGN_PER_LINHA;
-      const foreignChips = foreignEntries.slice(0, REPORT_MAX_FOREIGN_PER_LINHA).map((f) => {
+      const foreignChips = foreignEntries.map((f) => {
         const ueaNames = [...f.ueaProfs].map((rid) => researcherById.get(rid)?.nome).filter(Boolean).join(", ");
         return `<span class="chip" title="Conecta com: ${reportEsc(ueaNames)}">${reportEsc(f.nome)}</span>`;
       }).join("");
@@ -208,7 +196,6 @@ function buildInstitutionHierarchySection(researchers, edges, researcherById) {
         <div class="linha-block">
           <h4>${reportEsc(kw)}${linha.real ? "" : ' <span class="tag">match por palavra-chave</span>'}</h4>
           <div class="prof-chips">${foreignChips || '<span class="report-note">Nenhum pesquisador identificado.</span>'}</div>
-          ${foreignTruncated ? `<p class="truncate-note">+${reportFmt(foreignEntries.length - REPORT_MAX_FOREIGN_PER_LINHA)} pesquisador(es) não exibido(s).</p>` : ""}
         </div>`;
     }).join("");
 
@@ -217,16 +204,14 @@ function buildInstitutionHierarchySection(researchers, edges, researcherById) {
         <h3>${reportEsc(instName)}</h3>
         <div class="inst-meta">${reportEsc(inst.pais)} · ${reportFmt(inst.uea.size)} pesquisador(es) UEA · ${reportFmt(inst.estrangeiros.size)} pesquisador(es) estrangeiro(s) · ${reportFmt(inst.conexoes)} conexões</div>
         ${linhaBlocks}
-        ${linhasTruncated ? `<p class="truncate-note">+${reportFmt(linhaEntries.length - REPORT_MAX_LINHAS_PER_INSTITUTION)} linha(s) de pesquisa não exibida(s).</p>` : ""}
       </div>`;
   }).join("");
 
   return `
     <section class="report-section">
       <h2>Instituições estrangeiras</h2>
-      <p class="report-note">Organizado por instituição estrangeira; dentro de cada uma, as principais linhas de pesquisa da UEA que deram match, e os pesquisadores estrangeiros daquela instituição conectados a cada linha (passe o mouse sobre o nome para ver qual professor da UEA gerou o match).</p>
+      <p class="report-note">Organizado por instituição estrangeira; dentro de cada uma, todas as linhas de pesquisa da UEA que deram match, e os pesquisadores estrangeiros daquela instituição conectados a cada linha (passe o mouse sobre o nome para ver qual professor da UEA gerou o match).</p>
       ${blocks || `<p class="report-note">Sem dados para os filtros atuais.</p>`}
-      ${instTruncated ? `<p class="truncate-note">Mostrando as ${REPORT_MAX_INSTITUTION_ROWS} instituições com mais conexões, de ${reportFmt(instEntries.length)} no total.</p>` : ""}
     </section>`;
 }
 
@@ -254,7 +239,6 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
 
   const foreignRankedRows = [...agg.byForeignResearcher.values()]
     .sort((a, b) => b.conexoes - a.conexoes)
-    .slice(0, 20)
     .map((f, i) => `
       <tr>
         <td class="num">${i + 1}</td>
@@ -306,7 +290,6 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   table.report-table--compact td, table.report-table--compact th { padding: 4px 6px; font-size: 11.5px; }
   .tag { display: inline-block; font-size: 9.5px; color: var(--ink-muted); background: var(--wash); border: 1px solid var(--border);
     border-radius: 999px; padding: 1px 6px; margin-left: 4px; }
-  .truncate-note { font-size: 11px; color: var(--ink-muted); margin-top: 6px; }
   /* hierarquia nível 1/2/3: Instituição estrangeira > Linha de pesquisa > Professores UEA */
   .inst-block { break-inside: avoid; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
   .inst-block:last-child { border-bottom: none; }
