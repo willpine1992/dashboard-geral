@@ -10,6 +10,7 @@
 const REPORT_MAX_INSTITUTION_ROWS = 60;
 const REPORT_MAX_LINHAS_PER_INSTITUTION = 6; // "principais" linhas de pesquisa — não a lista inteira
 const REPORT_MAX_FOREIGN_PER_LINHA = 15;
+const REPORT_MAX_LINHAS_PER_PPG = 10;
 
 function reportEsc(s) {
   return String(s ?? "").replace(/[&<>"']/g, (c) => (
@@ -54,7 +55,6 @@ function aggregateForReport(researchers, edges, institutions) {
 
   const byCountry = new Map(); // pais -> { instituicoes:Set, pesquisadoresUEA:Set, conexoes:number }
   const byInstitution = new Map(); // instituicao -> { pais, uea:Set, estrangeiros:Set, conexoes:number }
-  const byKeyword = new Map(); // keyword -> conexoes
   const byForeignResearcher = new Map(); // orcid|nome -> { nome, instituicao, pais, conexoes }
 
   for (const e of edges) {
@@ -78,8 +78,6 @@ function aggregateForReport(researchers, edges, institutions) {
     inst.estrangeiros.add(e.foreign_author_orcid || e.foreign_author_name);
     inst.conexoes += 1;
 
-    if (e.linha_real) byKeyword.set(e.keyword, (byKeyword.get(e.keyword) || 0) + 1);
-
     const fKey = e.foreign_author_orcid || e.foreign_author_name;
     if (!byForeignResearcher.has(fKey)) {
       byForeignResearcher.set(fKey, {
@@ -89,7 +87,59 @@ function aggregateForReport(researchers, edges, institutions) {
     byForeignResearcher.get(fKey).conexoes += 1;
   }
 
-  return { byCountry, byInstitution, byKeyword, byForeignResearcher };
+  return { byCountry, byInstitution, byForeignResearcher };
+}
+
+/* ---------- linhas de pesquisa, separadas por PPG ----------
+   Só conta edges com linha_real (linha de fato cadastrada no Lattes, não
+   fallback de tradução de keyword) — mesmo critério já usado nas demais
+   seções do relatório. Um professor vinculado a mais de um PPG contribui
+   para as linhas de todos eles. */
+function aggregateLinhasByPPG(researchers, edges) {
+  const programasById = new Map(researchers.map((r) => [r.id, r.programas || []]));
+  const byPPG = new Map(); // ppg -> Map(keyword -> conexoes)
+
+  for (const e of edges) {
+    if (!e.linha_real) continue;
+    const programas = programasById.get(e.researcher_id);
+    if (!programas) continue;
+    for (const ppg of programas) {
+      if (!byPPG.has(ppg)) byPPG.set(ppg, new Map());
+      const m = byPPG.get(ppg);
+      m.set(e.keyword, (m.get(e.keyword) || 0) + 1);
+    }
+  }
+  return byPPG;
+}
+
+function buildLinhasByPPGSection(researchers, edges) {
+  const byPPG = aggregateLinhasByPPG(researchers, edges);
+  const ppgEntries = [...byPPG.entries()].sort((a, b) => a[0].localeCompare(b[0], "pt-BR"));
+
+  const blocks = ppgEntries.map(([ppg, keywordMap]) => {
+    const kwEntries = [...keywordMap.entries()].sort((a, b) => b[1] - a[1]);
+    const truncated = kwEntries.length > REPORT_MAX_LINHAS_PER_PPG;
+    const rows = kwEntries.slice(0, REPORT_MAX_LINHAS_PER_PPG)
+      .map(([kw, n]) => `<tr><td>${reportEsc(kw)}</td><td class="num">${reportFmt(n)}</td></tr>`).join("");
+
+    return `
+      <div class="ppg-block">
+        <h3>${reportEsc(ppg)}</h3>
+        <table class="report-table report-table--compact">
+          <thead><tr><th>Linha de pesquisa</th><th class="num">Conexões</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        ${truncated ? `<p class="truncate-note">+${reportFmt(kwEntries.length - REPORT_MAX_LINHAS_PER_PPG)} linha(s) não exibida(s).</p>` : ""}
+      </div>`;
+  }).join("");
+
+  return `
+    <section class="report-section">
+      <h2>Principais linhas de pesquisa por PPG</h2>
+      <p class="report-note">Para cada Programa de Pós-Graduação da UEA presente no recorte atual, as linhas de pesquisa confirmadas no Lattes com mais conexões internacionais. Um professor vinculado a mais de um PPG conta em cada um deles.</p>
+      <div class="ppg-grid">${blocks || ""}</div>
+      ${!blocks ? '<p class="report-note">Sem linhas de pesquisa confirmadas para os filtros atuais.</p>' : ""}
+    </section>`;
 }
 
 /* ---------- hierarquia Instituição estrangeira > Linha de pesquisa > Pesquisadores estrangeiros ----------
@@ -200,11 +250,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
         <td class="num">${reportFmt(v.conexoes)}</td>
       </tr>`).join("");
 
-  const keywordRows = [...agg.byKeyword.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 15)
-    .map(([kw, n]) => `
-      <tr><td>${reportEsc(kw)}</td><td class="num">${reportFmt(n)}</td></tr>`).join("");
+  const linhasByPPGSection = buildLinhasByPPGSection(researchers, edges);
 
   const foreignRankedRows = [...agg.byForeignResearcher.values()]
     .sort((a, b) => b.conexoes - a.conexoes)
@@ -268,6 +314,10 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   .inst-block .inst-meta { font-size: 11px; color: var(--ink-muted); margin-bottom: 10px; }
   .linha-block { break-inside: avoid; margin: 0 0 10px 16px; }
   .linha-block h4 { font-size: 12px; color: var(--ink-secondary); margin: 0 0 5px; font-weight: 700; }
+  /* linhas de pesquisa separadas por PPG — grade de 2 colunas, um bloco por PPG */
+  .ppg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+  .ppg-block { break-inside: avoid; margin-bottom: 14px; }
+  .ppg-block h3 { color: var(--ink-primary); font-size: 12.5px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .03em; }
   .prof-chips { display: flex; flex-wrap: wrap; gap: 5px; }
   .prof-chips .chip { display: inline-block; font-size: 11px; color: var(--ink-primary); background: var(--wash);
     border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
@@ -279,7 +329,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   @media print {
     .print-bar { display: none; }
     body { padding: 0 6mm; max-width: none; }
-    .inst-block, .linha-block { page-break-inside: avoid; }
+    .inst-block, .linha-block, .ppg-block { page-break-inside: avoid; }
     @page { margin: 14mm; }
   }
 </style>
@@ -318,13 +368,7 @@ function buildReportHTML({ researchers, edges, filters, researcherById, totals, 
   </table>
 </section>
 
-<section class="report-section">
-  <h2>Principais linhas de pesquisa</h2>
-  <table class="report-table">
-    <thead><tr><th>Linha de pesquisa</th><th class="num">Conexões</th></tr></thead>
-    <tbody>${keywordRows || `<tr><td colspan="2">Sem dados para os filtros atuais.</td></tr>`}</tbody>
-  </table>
-</section>
+${linhasByPPGSection}
 
 <section class="report-section">
   <h2>Pesquisadores estrangeiros mais conectados</h2>
